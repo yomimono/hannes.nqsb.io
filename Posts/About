@@ -94,10 +94,10 @@ building and testing (and a neat self-hosted website).  A big gap was security.
 No access control, no secure sockets layer, nothing.  This will be the topic of
 another post.
 
-OCaml is [academically](http://compcert.inria.fr/) and [commercially](https://blogs.janestreet.com/) used, compiles to native code (arm/amd64/likely more), has a
-fast runtime ("Reassuring, because our blanket performance statement "OCaml
-delivers at least 50% of the performance of a decent C compiler" is
-not invalidated :-)" [Xavier Leroy](https://lwn.net/Articles/19378/)), and the [community](https://opam.ocaml.org/packages/) is large enough, there are even people working full-time on the compiler.
+OCaml is [academically](http://compcert.inria.fr/) and [commercially](https://blogs.janestreet.com/) used, compiles to native code (arm/amd64/likely more), is
+fast enough ("Reassuring, because our blanket performance statement 'OCaml
+delivers at least 50% of the performance of a decent C compiler' is
+not invalidated :-)" [Xavier Leroy](https://lwn.net/Articles/19378/)), and the [community](https://opam.ocaml.org/packages/) is sufficiently large.
 
 ### Links
 
