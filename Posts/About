@@ -26,39 +26,42 @@ hardware.
 ### Myself
 
 I'm a [hacker](http://www.catb.org/jargon/html/H/hacker.html) (in the original
-sense of the word), 3X years old.  Back in 199X, my family bought a PC.  It came
+sense of the word), 3X years old.  In my spare time, I'm not only a hacker, but
+also a barista.  I like to travel and repair my recumbent bicycle.
+
+Back in 199X, my family bought a PC.  It came
 with MS-DOS installed, I also remember Windows 3.1 (likely on a later computer).
 This didn't really hook me into computers, but over the years I started with
 friends to modify some computer games (e.g. modifying text of Civilization).  I
 first encountered programming in high school around 1995: Borland's Turbo Pascal
 (which chased me for several years).
 
-In my spare time, I'm not only a hacker, but also a barista.  I like to travel
-and repair my recumbent bicycle.
-
 Fast forwarding a bit, I learned about the operating system Linux (starting with
-SUSE 6.4) and got hooked (using YaST, setting up basic networking
-(NFS/YP/Samba)).  I joined the [Chaos Computer Club](https://www.ccc.de) around 2000.  I learned a bit Perl, PHP, and also FreeBSD (I still use FreeBSD-CURRENT
-on my laptop).  I helped with [analysing a voting
+SUSE 6.4) and got hooked (YaST, setting up basic networking (NFS/YP/Samba)) to
+UNIX.  In 2000 I joined the [Chaos Computer Club](https://www.ccc.de).
+Over the years I learned various things, from Linux kernel modifications,
+Perl, PHP, basic network and security.  I also started to use [FreeBSD](https://www.FreeBSD.org) around 4.5, still using a FreeBSD-CURRENT
+on my laptop (unfortunately no Broadwell graphics).  I helped to [reverse engineer and analyse the security of a voting
 computer](http://wijvertrouwenstemcomputersniet.nl) in the Netherlands, and some
 [art installations](http://blinkenlights.net/) in Berlin and Paris.  There were
-several annual Chaos Communication Congresses where I setup the network
-(backbone, access layer, wireless, service (DHCP/DNS)), struggling with mainly
-Cisco hardware from their demo pool, but also some HP, Force10, Juniper
+several annual Chaos Communication Congresses where I co-setup the network
+(backbone, access layer, wireless, network services such as DHCP/DNS), struggling with
+Cisco hardware from their demo pool, and also amongst others HP, Force10, Lucent, Juniper
 equipment.
 
-In the early 200X I started to program a lot of [Dylan](https://opendylan.org),
-a LISP dialect (dynamic, multiple inheritance, object-oriented), which even
-resulted in a [TCP/IP
-implementation](https://github.com/dylan-hackers/network-night-vision/).
+In the early 200X I started to program [Dylan](https://opendylan.org), a LISP
+dialect (dynamic, multiple inheritance, object-oriented), which even resulted in
+a [TCP/IP
+implementation](https://github.com/dylan-hackers/network-night-vision/)
+including a wireshark-like GTK based user interface with a shell similar to IOS for configuring the stack.
 
-I got really excited about programming languages and type theory (thanks to
+I got excited about programming languages and type theory (thanks to
 [types and programming languages](https://www.cis.upenn.edu/~bcpierce/tapl/), an
-excellent book); a key event for me was for sure ICFP in 2005.  I wondered how a
+excellent book); a key event for me was the [international conference on functional programming (ICFP)](http://cs.au.dk/~danvy/icfp05/).  I wondered how a
 [gradually typed](http://homes.soic.indiana.edu/jsiek/what-is-gradual-typing/)
-Dylan would look like.  I spent some effort on that, leading to a master thesis,
-but the result was not too convincing (too slow, type system not sound).
-Additionally, Dylan has a small community, which has a hard time to maintain the
+Dylan would look like, leading to my master thesis,
+but the result was not too convincing (too slow, unsound type system).
+Dylan suffers from a too tiny community, which has a hard time to maintain the
 self-hosted compiler and IDE.
 
 During my studies I met [Peter Sestoft](http://www.itu.dk/people/sestoft/).
@@ -87,7 +90,7 @@ espresso.  I ended up spending the winter (beginning of 2014) in Mirleft,
 Morocco.  A good friend of mine pointed me to [MirageOS](https://mirage.io), a
 clean-slate operating system written in the high-level language [OCaml](https://ocaml.org).  I got
 hooked pretty fast, after some experience with LISP machines I imagined a modern
-OS written in a homogenous functional programming language.
+OS written in a single functional programming language.
 
 MirageOS had various bits and pieces into place, including infrastructure for
 building and testing (and a neat self-hosted website).  A big gap was security.
@@ -99,11 +102,11 @@ fast enough ("Reassuring, because our blanket performance statement 'OCaml
 delivers at least 50% of the performance of a decent C compiler' is
 not invalidated :-)" [Xavier Leroy](https://lwn.net/Articles/19378/)), and the [community](https://opam.ocaml.org/packages/) is sufficiently large.
 
-### Links
+### Me on the intertubes
 
-You can find me on [twitter](https://twitter.com/h4nnes), and on
+You can find me on [twitter](https://twitter.com/h4nnes) and on
 [GitHub](https://github.com/hannesm).  I also have an [academic web
-site](https://www.cl.cam.ac.uk/~hm519/) in case you're interested.
+site](https://www.cl.cam.ac.uk/~hm519/).
 
 No comments here, but you can open issues on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io).
