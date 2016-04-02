@@ -38,8 +38,7 @@ and repair my recumbent bicycle.
 
 Fast forwarding a bit, I learned about the operating system Linux (starting with
 SUSE 6.4) and got hooked (using YaST, setting up basic networking
-(NFS/YP/Samba)).  I joined the [Chaos computer club](https://www.ccc.de) around
-2000.  I learned a bit Perl, PHP, and also FreeBSD (I still use FreeBSD-CURRENT
+(NFS/YP/Samba)).  I joined the [Chaos Computer Club](https://www.ccc.de) around 2000.  I learned a bit Perl, PHP, and also FreeBSD (I still use FreeBSD-CURRENT
 on my laptop).  I helped with [analysing a voting
 computer](http://wijvertrouwenstemcomputersniet.nl) in the Netherlands, and some
 [art installations](http://blinkenlights.net/) in Berlin and Paris.  There were
@@ -70,7 +69,7 @@ of imperative code) with Peter and [Lars Birkedal](http://cs.au.dk/~birke/).
 The idea was great, the project was fun, but we ended with 3000 lines of proof
 script for a 100 line Java program.  The Java program was taken off-the-shelf,
 several times refactored, and most of its shared mutable state was removed.  The
-proof script was in Coq, using our higher-order separation logic.
+proof script was in [Coq](https://coq.inria.fr), using our higher-order separation logic.
 
 I concluded two things: formal verification is hard and usually not applicable
 for off-the-shelf software.  *Since we have to rewrite the software anyways, why
@@ -86,7 +85,7 @@ faster runtime, and libraries).
 After I finished my PhD, I decided to slack off for some time to make decent
 espresso.  I ended up spending the winter (beginning of 2014) in Mirleft,
 Morocco.  A good friend of mine pointed me to [MirageOS](https://mirage.io), a
-clean-slate operating system written in the high-level language OCaml.  I got
+clean-slate operating system written in the high-level language [OCaml](https://ocaml.org).  I got
 hooked pretty fast, after some experience with LISP machines I imagined a modern
 OS written in a homogenous functional programming language.
 
@@ -95,9 +94,10 @@ building and testing (and a neat self-hosted website).  A big gap was security.
 No access control, no secure sockets layer, nothing.  This will be the topic of
 another post.
 
-OCaml is both academically and commercially used, compiles to native code, has a
-fast runtime, and the community is big enough that several people are working on
-the compiler full-time.
+OCaml is [academically](http://compcert.inria.fr/) and [commercially](https://blogs.janestreet.com/) used, compiles to native code (arm/amd64/likely more), has a
+fast runtime ("Reassuring, because our blanket performance statement "OCaml
+delivers at least 50% of the performance of a decent C compiler" is
+not invalidated :-)" [Xavier Leroy](https://lwn.net/Articles/19378/)), and the [community](https://opam.ocaml.org/packages/) is large enough, there are even people working full-time on the compiler.
 
 ### Links
 
