@@ -102,7 +102,7 @@ git repository, which IP and ports to use, and deployment is a `xl create
 canopy.xl` (which contains the name of the image, the name of the bridge
 interface, and how much memory it may consume).
 
-The full command line for this website is: `mirage configure --no-opam --xen -i Posts -n "full stack engineer" -r https://github.com/hannesm/hannes.nqsb.io.git --dhcp false --net direct --ip 198.167.222.205 --netmask 255.255.255.0 --gateways 198.167.222.1 --tls 443 --port 80` :)
+The full command line for configuring this website is: `mirage configure --no-opam --xen -i Posts -n "full stack engineer" -r https://github.com/hannesm/hannes.nqsb.io.git --dhcp false --net direct --ip 198.167.222.205 --netmask 255.255.255.0 --gateways 198.167.222.1 --tls 443 --port 80`, followed by a `make` and `xl create canopy.xl` (and making sure that the TLS keys are in `tls/` subfolder).
 
 Instead of running on a multi-purpose operating system, this website uses a
 bunch of libraries, which are compiled and statically
