@@ -1,0 +1,130 @@
+---
+title: Operating systems
+author: hannes
+tags: overview, operating system, mirageos
+abstract: Basics of OS and MirageOS
+---
+
+## Remark about this site
+
+Sorry to be late with this entry, but I had to fix some issues:
+
+- this website is based on [Canopy](https://github.com/Engil/Canopy), the content is stored as markdown in a [git repository](https://github.com/hannesm/hannes.nqsb.io)
+- it was running in a FreeBSD jail, but when I compiled too much the underlying zfs file system didn't feel happy (and is now hanging in kernel space in a read)
+- no remote power switch (borrowed to a friend 3 weeks ago), nobody was willing to go to the data centre and reboot
+- I wanted to move it anyways to a host where I can deploy Xen guest VMs
+- turns out the Xen compilation and deployment mode needed some love:
+   - I ported a newer [bin_prot](https://github.com/hannesm/bin_prot/tree/113.33.00+xen) to xen
+   - I wrote a clean patch to [serve via TLS](https://github.com/Engil/Canopy/pull/15) (including [HSTS header](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) and redirecting HTTP (moved permanently) to HTTPS)
+   - I found a memory leak in the [mirage-http](https://github.com/mirage/mirage-http/pull/23) library
+- I was travelling
+- good news: it now works on Xen, and there is [an atom feed](https://hannes.nqsb.io/atom)
+- life of an "eat your own dogfood" full stack engineer ;)
+
+## What is an operating system?
+
+Wikipedia says: "An operating system (OS) is system software that manages
+computer hardware and software resources and provides common services for
+computer programs."  Great.  In other terms, it is an abstraction layer.
+Applications don't need to deal with the low-level bits (device drivers) of the
+computer.
+
+But if we look at the landscape of deployed operating systems, there is a lot
+more going on than abstracting devices: usually this includes process management (scheduler),
+memory management (virtual memory), [C
+library](https://en.wikipedia.org/wiki/C_standard_library), user management
+(including access control), persistent storage (file system), network stack,
+etc. all being part of the kernel, and executed in kernel space.  A
+counterexample is [Minix](http://www.minix3.org/), which consists of a tiny
+microkernel, and executes the above mentioned services as user-space processes.
+
+The kernel has full access to the hardware, runs in
+[ring 0](https://en.wikipedia.org/wiki/Protection_ring) and thus an issue in the
+kernel is devastating for the entire system.  Since developers are not perfect,
+there will always be bugs in code.  Since we are (or at least I am) interested
+in robust systems, every piece of code running in ring 0 is of concern to us.
+
+This is the pre-virtualisation world, now there is on top of that a
+[hypervisor](https://en.wikipedia.org/wiki/Hypervisor), which runs in ring -1.
+The hypervisor gives access to memory and hardware to virtual machines, and
+schedules virtual machines on processors.
+
+![there's no cloud, just other people's computers](https://fsfe.org/contribute/promopics/thereisnocloud-v2-preview.png)
+
+This ominous "cloud" uses hypervisors on huge amount of physical machines, and
+executes off-the-shelf operating systems as virtual machines on top.  Accounting
+is then done by resource usage (time, bandwidth, storage).
+
+## From scratch
+
+Ok, now we have hypervisors which already deals with memory and scheduling.  Why
+should we have the very same functionality again in the virtual machine?
+
+Additionally, earlier in my live (back in 2005 at the Dutch hacker camp "What
+the hack") I proposed (together with Andreas Bogk) to [phase out UNIX before
+2038-01-19](https://berlin.ccc.de/~hannes/wth.pdf) (this is when `time_t`
+overflows, unless promoted to 64 bit), and replace it with Dylan.  A [random
+comment](http://www.citizen428.net/blog/2005/08/03/what-the-hack-recap/) about
+our talk on the Internet is "the proposal that rewritting an entire OS in a
+language with obscure sytanx was somewhat original. However, I now somewhat feel
+a strange urge to spend some time on Dylan, which is really weird..."
+
+Being without funding back then, we didn't get far (hugest success was a
+[TCP/IP](https://github.com/dylan-hackers/network-night-vision/) stack in
+Dylan), and as mentioned earlier I went into formal methods and mechanised
+proofs of full functional correctness properties...
+
+A bit more than two years ago, David pointed me to
+[MirageOS](https://mirage.io), an operating system from scratch in the
+functional and statically typed language [OCaml](https://ocaml.org).  Since then
+I spend nearly every day on OCaml libraries (with varying success on being happy
+with my code).  There are also more than two people caring about MirageOS.
+
+The idea is pretty straightforward: use a hypervisor, and its hardware
+abstractions (virtualised input/output and network device), and execute the
+OCaml runtime directly on it.  No C library included (since May 2015, see [this
+thread](http://lists.xenproject.org/archives/html/mirageos-devel/2014-05/msg00070.html)).
+This OCaml-based virtual machine runs in kernel space (this is bad, but
+[this article](https://matildah.github.io/posts/2016-01-30-unikernel-security.html) shows
+why it isn't too bad) for now, and
+consists of the required libraries only (this website is 16MB in size, which
+includes the static CSS and JavaScript (bootstrap, jquery, fonts), HTTP, TLS, git, TCP/IP libraries,
+and I didn't even bother to strip it).  The memory management in MirageOS is
+straightforward: the hypervisor provides the OCaml runtime with a chunk of memory, which
+immediately takes all of it.
+
+This is much simpler to configure and deploy than a UNIX operating system:
+There is no virtual memory, no process management, no file
+system, no user management in the image.
+
+At compile time (which is configuration time), I hardcode the TLS keys, remote
+git repository, which IP and ports to use, and deployment is a `xl create
+canopy.xl` (which contains the name of the image, the name of the bridge
+interface, and how much memory it may consume).
+
+Instead of running on a multi-purpose operating system, this website uses a
+bunch of libraries, which are compiled and statically
+linked into the virtual machine image.
+
+MirageOS uses the module system of OCaml to define how interfaces should be, thus an
+application developer does not need to care whether they are using the TCP/IP
+stack written in OCaml, or the sockets API of a UNIX operating system.  This
+also allows to compile and debug your library on UNIX using off-the-shelf tools
+before deploying it as a virtual machine (NB: this is a lie, since there is code
+which is only executed when running on Xen, and this code can be buggy) ;).
+
+Most of the MirageOS ecosystem is developed under MIT/ISC/BSD license, which
+allows everybody to use it for whichever project they want.
+
+Did I mention that by using less code the attack vectors shrink immediately?  In
+addition to that, using a memory safe programming language where the developer
+does not need to care about allocations and bounds checks, immediately removes
+several classes of security problems (namely spatial and temporal memory
+issues).  There is enough left, such as logical issues, and there is no access
+control (that's fine for this website, the content is "protected" by GitHub's
+access control).
+
+I hope I gave some insight into what the purpose of an operating systems is, and
+how MirageOS fits into the picture. I'm interested in feedback, either via
+[twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
+GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
