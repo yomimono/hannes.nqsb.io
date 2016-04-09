@@ -8,8 +8,8 @@ abstract: introduction (myself, this site)
 ## What is a "full stack engineer"?
 
 Analysing the word literally, we should start with silicon and some electrons,
-maybe a soldering iron, and engineer everything all the way up to your favourite
-mail client.
+maybe a soldering iron, and build everything all the way up to our favourite
+communication system.
 
 While I know how to solder, I don't plan to write about hardware in here.  I'll
 assume that off-the-shelf hardware (arm/amd64) is available and trustworthy.
