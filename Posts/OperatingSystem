@@ -98,11 +98,27 @@ The idea is straightforward: use a hypervisor, and its hardware
 abstractions (virtualised input/output and network device), and execute the
 OCaml runtime directly on it.  No C library included (since May 2015, see [this
 thread](http://lists.xenproject.org/archives/html/mirageos-devel/2014-05/msg00070.html)).
-This OCaml-based virtual machine runs in kernel space (which is bad, but
-[this article](https://matildah.github.io/posts/2016-01-30-unikernel-security.html) shows
-why it isn't too bad) for now, and
-consists of the required libraries only.
-If we assume that the memory management of the OCaml runtime cannot be circumvented (by malicious code), there is no need for isolating the memory space even further.  I think that an interesting approach is to use capabilities in a way [barrelfish](http://www.barrelfish.org/) does.
+The virtual machine, based on the OCaml runtime and composed of OCaml libraries,
+uses a single address space and runs in ring 0.
+
+As mentioned above, all code which runs in ring 0 needs to be carefully
+developed and checked since a flaw in it can jeopardise the security properties
+of the entire system: the TCP/IP library should not have access to the private
+key used for the TLS handshake.  If we trust the OCaml runtime, especially its
+memory management, there is no way for the TCP/IP library to access the memory
+of the TLS subsystem: the TLS API does not expose the private key via an API
+call, and being in a memory safe language, a library cannot read arbitrary
+memory.  There is no real need to isolate each library into a separate address
+spaces.  In my opinion, using capabilities for memory access would be a great
+improvement, similar to [barrelfish](http://www.barrelfish.org).  OCaml has a C
+foreign function call interface which can be used to read arbitrary memory --
+you have to take care that all C bits of the system are not malicious (it is
+fortunately difficult to embed C code into MirageOS, thus only few bits written
+in C are in MirageOS (such as (loop and allocation free) [crypto
+primitives](https://github.com/mirleft/ocaml-nocrypto/tree/f076d4e75c56054d79b876e00b6bded06d90df86/src/native)).
+To further read up on the topic, there is a [nice article about the
+security](https://matildah.github.io/posts/2016-01-30-unikernel-security.html).
+
 This website is 16MB in size (and I didn't even bother to strip yet), which
 includes the static CSS and JavaScript (bootstrap, jquery, fonts), [HTTP](https://github.com/mirage/ocaml-cohttp), [TLS](https://github.com/mirleft/ocaml-tls) (also [X.509](https://github.com/mirleft/ocaml-x509), [ASN.1](https://github.com/mirleft/ocaml-asn1-combinators), [crypto](https://github.com/mirleft/ocaml-nocrypto)), [git](https://github.com/mirage/ocaml-git/) (and [irmin](https://github.com/mirage/irmin)), [TCP/IP](https://github.com/mirage/mirage-tcpip) libraries.
 The memory management in MirageOS is
