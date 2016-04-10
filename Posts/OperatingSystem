@@ -151,7 +151,7 @@ The OCaml runtime was reviewed by the French [Agence nationale de la sécurité 
 leading to some changes, such as separation of immutable strings (`String`) from mutable byte vectors (`Bytes`).
 
 The attack surface is still big enough:  logical issues, resource management, and there is no access
-control.  This is fine for this website, publishing of content is "protected" by GitHub's
+control.  This is fine for this website, publishing of content is "protected" by relying on GitHub's
 access control.
 
 I hope I gave some insight into what the purpose of an operating systems is, and
