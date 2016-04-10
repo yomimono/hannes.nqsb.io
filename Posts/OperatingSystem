@@ -148,7 +148,7 @@ does not need to care about memory management and bounds checks, immediately rem
 several classes of security problems (namely spatial and temporal memory
 issues), once the runtime is trusted.
 The OCaml runtime was reviewed by the French [Agence nationale de la sécurité des systèmes d’information](http://www.ssi.gouv.fr/agence/publication/lafosec-securite-et-langages-fonctionnels/) in 2013,
-leading to some changes, such as separation of immutable strings (`String`) and mutable byte vectors (`Bytes`).
+leading to some changes, such as separation of immutable strings (`String`) from mutable byte vectors (`Bytes`).
 
 The attack surface is still big enough:  logical issues, resource management, and there is no access
 control.  This is fine for this website, publishing of content is "protected" by GitHub's
