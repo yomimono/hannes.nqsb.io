@@ -15,7 +15,7 @@ While I know how to solder, I don't plan to write about hardware in here.  I'll
 assume that off-the-shelf hardware (arm/amd64) is available and trustworthy.
 Read the [Intel x86 considered
 harmful](http://blog.invisiblethings.org/papers/2015/x86_harmful.pdf) paper in
-case you're interested in trustworthyness of hardware.
+case you're interested in trustworthiness of hardware.
 
 My current obsession is to enable people to take back control over their data:
 simple to setup, secure, decentralised infrastructure.  We're not there yet,
@@ -79,9 +79,9 @@ I concluded two things: formal verification is hard and usually not applicable
 for off-the-shelf software.  *Since we have to rewrite the software anyways, why
 not do it in a declarative way?*
 
-Some artifacts from that time are still around: an [eclipse plugin for
+Some artefacts from that time are still around: an [eclipse plugin for
 Coq](https://coqoon.github.io/), I also started (with David) the [idris-mode for
-emacs](https://github.com/idris-hackers/idris-mode).  Idris is a depedently
+emacs](https://github.com/idris-hackers/idris-mode).  Idris is a dependently
 typed programming language (you can express richer types), actively being
 researched (I would not consider it production ready yet, needs more work on a
 faster runtime, and libraries).

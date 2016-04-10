@@ -60,13 +60,13 @@ is then done by resource usage (time, bandwidth, storage).
 Ok, now we have hypervisors which already deals with memory and scheduling.  Why
 should we have the very same functionality again in the virtual machine?
 
-Additionally, earlier in my live (back in 2005 at the Dutch hacker camp "What
+Additionally, earlier in my life (back in 2005 at the Dutch hacker camp "What
 the hack") I proposed (together with Andreas Bogk) to [phase out UNIX before
 2038-01-19](https://berlin.ccc.de/~hannes/wth.pdf) (this is when `time_t`
 overflows, unless promoted to 64 bit), and replace it with Dylan.  A [random
 comment](http://www.citizen428.net/blog/2005/08/03/what-the-hack-recap/) about
-our talk on the Internet is "the proposal that rewritting an entire OS in a
-language with obscure sytanx was somewhat original. However, I now somewhat feel
+our talk on the Internet is "the proposal that rewriting an entire OS in a
+language with obscure syntax was somewhat original. However, I now somewhat feel
 a strange urge to spend some time on Dylan, which is really weird..."
 
 Being without funding back then, we didn't get far (hugest success was a
