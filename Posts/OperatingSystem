@@ -10,9 +10,9 @@ abstract: Operating systems and MirageOS
 Sorry to be late with this entry, but I had to fix some issues:
 
 - this website is based on [Canopy](https://github.com/Engil/Canopy), the content is stored as markdown in a [git repository](https://github.com/hannesm/hannes.nqsb.io)
-- it was running in a FreeBSD jail, but when I compiled too much the underlying zfs file system didn't feel happy (and is now hanging in kernel space in a read)
+- it was running in a [FreeBSD](https://FreeBSD.org) jail, but when I compiled too much the underlying [zfs file system](https://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/zfs.html) wasn't happy (and is now hanging in kernel space in a read)
 - no remote power switch (borrowed to a friend 3 weeks ago), nobody was willing to go to the data centre and reboot
-- I wanted to move it anyways to a host where I can deploy Xen guest VMs
+- I wanted to move it anyways to a host where I can deploy [Xen](http://www.xenproject.org/) guest VMs
 - turns out the Xen compilation and deployment mode needed some love:
    - I ported a newer [bin_prot](https://github.com/hannesm/bin_prot/tree/113.33.00+xen) to xen
    - I wrote a clean patch to [serve via TLS](https://github.com/Engil/Canopy/pull/15) (including [HSTS header](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) and redirecting HTTP (moved permanently) to HTTPS)
@@ -38,27 +38,40 @@ etc. all being part of the kernel, and executed in kernel space.  A
 counterexample is [Minix](http://www.minix3.org/), which consists of a tiny
 microkernel, and executes the above mentioned services as user-space processes.
 
-The kernel has full access to the hardware, runs in
-[ring 0](https://en.wikipedia.org/wiki/Protection_ring) and thus an issue in the
-kernel is devastating for the entire system.  Since developers are not perfect,
-there will always be bugs in code.  Since we are (or at least I am) interested
-in robust systems, every piece of code running in ring 0 is of concern to us.
+We are (or at least I am) interested in robust systems.  Development is done
+by humans, thus will always be error-prone.  Even a proof of its functional
+correctness can be flawed if the proof system is inconsistent or the
+specification is wrong.  We need to have damage control in place by striving
+for the [principle of least authority](https://en.wikipedia.org/wiki/Principle_of_least_privilege).
+The goods to guard is the user data (passwords, personal information, private
+mails, ...), which lives in memory.
 
-This is the pre-virtualisation world, now there is on top of that a
+A CPU contains [protection rings](https://en.wikipedia.org/wiki/Protection_ring),
+where the kernel runs in ring 0 and thus has full access to the hardware,
+including memory.  A flaw in the kernel is devastating for the security of the
+entire system, it is part of the [trusted computing base](https://en.wikipedia.org/wiki/Trusted_computing_base)).
+Every byte of kernel code should be carefully developed and audited.  If we
+can contain code into areas with less authority, we should do so.  Obviously,
+the mechanism to contain code needs to be carefully audited as well, since
+it will likely need to run in privileged mode.
+
+In a virtualised world, we have on top of the kernel a
 [hypervisor](https://en.wikipedia.org/wiki/Hypervisor), which runs in ring -1.
-The hypervisor gives access to memory and hardware to virtual machines, and
-schedules virtual machines on processors.
+The hypervisor gives access to memory and hardware to virtual machines,
+schedules those virtual machines on processors, and should isolate the virtual
+machines from each other.
 
 ![there's no cloud, just other people's computers](https://fsfe.org/contribute/promopics/thereisnocloud-v2-preview.png)
 
 This ominous "cloud" uses hypervisors on huge amount of physical machines, and
 executes off-the-shelf operating systems as virtual machines on top.  Accounting
-is then done by resource usage (time, bandwidth, storage).
+is done by resource usage (time, bandwidth, storage).
 
 ## From scratch
 
 Ok, now we have hypervisors which already deals with memory and scheduling.  Why
-should we have the very same functionality again in the virtual machine?
+should we have the very same functionality again in the (general purpose) operating
+system running as virtual machine?
 
 Additionally, earlier in my life (back in 2005 at the Dutch hacker camp "What
 the hack") I proposed (together with Andreas Bogk) to [phase out UNIX before
@@ -72,40 +85,51 @@ a strange urge to spend some time on Dylan, which is really weird..."
 Being without funding back then, we didn't get far (hugest success was a
 [TCP/IP](https://github.com/dylan-hackers/network-night-vision/) stack in
 Dylan), and as mentioned earlier I went into formal methods and mechanised
-proofs of full functional correctness properties...
+proofs of full functional correctness properties.
 
-A bit more than two years ago, David pointed me to
-[MirageOS](https://mirage.io), an operating system from scratch in the
-functional and statically typed language [OCaml](https://ocaml.org).  Since then
-I spend nearly every day on OCaml libraries (with varying success on being happy
-with my code).  There are also more than two people caring about MirageOS.
+At the end of 2013, David pointed me to
+[MirageOS](https://mirage.io), an operating system developed from scratch in the
+functional and statically typed language [OCaml](https://ocaml.org).  I've not
+used much OCaml before, but some other functional programming languages.
+Since then, I spend nearly every day on developing OCaml libraries (with varying success on being happy
+with my code).  In contrast to Dylan, there are more than two people developing MirageOS.
 
-The idea is pretty straightforward: use a hypervisor, and its hardware
+The idea is straightforward: use a hypervisor, and its hardware
 abstractions (virtualised input/output and network device), and execute the
 OCaml runtime directly on it.  No C library included (since May 2015, see [this
 thread](http://lists.xenproject.org/archives/html/mirageos-devel/2014-05/msg00070.html)).
 This OCaml-based virtual machine runs in kernel space (this is bad, but
 [this article](https://matildah.github.io/posts/2016-01-30-unikernel-security.html) shows
 why it isn't too bad) for now, and
-consists of the required libraries only (this website is 16MB in size, which
-includes the static CSS and JavaScript (bootstrap, jquery, fonts), HTTP, TLS, git, TCP/IP libraries,
-and I didn't even bother to strip it).  The memory management in MirageOS is
+consists of the required libraries only.  This website is 16MB in size (and I didn't even bother to strip yet), which
+includes the static CSS and JavaScript (bootstrap, jquery, fonts), [HTTP](https://github.com/mirage/ocaml-cohttp), [TLS](https://github.com/mirleft/ocaml-tls) (also [X.509](https://github.com/mirleft/ocaml-x509), [ASN.1](https://github.com/mirleft/ocaml-asn1-combinators), [crypto](https://github.com/mirleft/ocaml-nocrypto)), [git](https://github.com/mirage/ocaml-git/) (and [irmin](https://github.com/mirage/irmin)), [TCP/IP](https://github.com/mirage/mirage-tcpip) libraries.
+The memory management in MirageOS is
 straightforward: the hypervisor provides the OCaml runtime with a chunk of memory, which
 immediately takes all of it.
 
 This is much simpler to configure and deploy than a UNIX operating system:
 There is no virtual memory, no process management, no file
-system, no user management in the image.
+system (the markdown content is held in memory with irmin!), no user management in the image.
 
-At compile time (which is configuration time), I hardcode the TLS keys, remote
-git repository, which IP and ports to use, and deployment is a `xl create
-canopy.xl` (which contains the name of the image, the name of the bridge
-interface, and how much memory it may consume).
+At compile (configuration) time, the TLS keys are baked into the image, in addition to the url of the remote
+git repository, the IPv4 address and ports the image should use:
+The full command line for configuring this website is: `mirage configure --no-opam --xen -i Posts -n "full stack engineer" -r https://github.com/hannesm/hannes.nqsb.io.git --dhcp false --net direct --ip 198.167.222.205 --netmask 255.255.255.0 --gateways 198.167.222.1 --tls 443 --port 80`.
+It relies on the fact that the TLS certificate chain and private key are in the `tls/` subdirectory, which is transformed to code and included in the image (using [crunch](https://github.com/mirage/ocaml-crunch)).   An improvement would be to [use an ELF section](https://github.com/mirage/mirage/issues/489), but there is no code yet.
+After configuring and installing the required depedencies, a `make` builds the statically linked image.
 
-The full command line for configuring this website is: `mirage configure --no-opam --xen -i Posts -n "full stack engineer" -r https://github.com/hannesm/hannes.nqsb.io.git --dhcp false --net direct --ip 198.167.222.205 --netmask 255.255.255.0 --gateways 198.167.222.1 --tls 443 --port 80`, followed by a `make` and `xl create canopy.xl` (and making sure that the TLS keys are in `tls/` subfolder).
+Deployment is done via `xl create canopy.xl`.  The file `canopy.xl` is automatically generated by `mirage --configure` (but might need modifications).  It contains the full path to the image, the name of the bridge
+interface, and how much memory the image can use:
+```
+name = 'canopy'
+kernel = 'mir-canopy.xen'
+builder = 'linux'
+memory = 256
+on_crash = 'preserve'
+vif = [ 'bridge=br0' ]
+```
 
-Instead of running on a multi-purpose operating system, this website uses a
-bunch of libraries, which are compiled and statically
+To rephrase: instead of running on a multi-purpose operating system including processes, file system, etc., this website uses a
+set of libraries, which are compiled and statically
 linked into the virtual machine image.
 
 MirageOS uses the module system of OCaml to define how interfaces should be, thus an
@@ -118,13 +142,17 @@ which is only executed when running on Xen, and this code can be buggy) ;).
 Most of the MirageOS ecosystem is developed under MIT/ISC/BSD license, which
 allows everybody to use it for whichever project they want.
 
-Did I mention that by using less code the attack vectors shrink immediately?  In
-addition to that, using a memory safe programming language where the developer
-does not need to care about allocations and bounds checks, immediately removes
+Did I mention that by using less code the attack vector shrinks?  In
+addition to that, using a memory safe programming language, where the developer
+does not need to care about memory management and bounds checks, immediately removes
 several classes of security problems (namely spatial and temporal memory
-issues).  There is enough left, such as logical issues, and there is no access
-control (that's fine for this website, the content is "protected" by GitHub's
-access control).
+issues), once the runtime is trusted.
+The OCaml runtime was reviewed by the French [Agence nationale de la sécurité des systèmes d’information](http://www.ssi.gouv.fr/agence/publication/lafosec-securite-et-langages-fonctionnels/) in 2013,
+leading to some changes, such as separation of immutable strings (`String`) and mutable byte vectors (`Bytes`).
+
+The attack surface is still big enough:  logical issues, resource management, and there is no access
+control.  This is fine for this website, publishing of content is "protected" by GitHub's
+access control.
 
 I hope I gave some insight into what the purpose of an operating systems is, and
 how MirageOS fits into the picture. I'm interested in feedback, either via
