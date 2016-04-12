@@ -87,6 +87,8 @@ Being without funding back then, we didn't get far (hugest success was a
 Dylan), and as mentioned earlier I went into formal methods and mechanised
 proofs of full functional correctness properties.
 
+### MirageOS
+
 At the end of 2013, David pointed me to
 [MirageOS](https://mirage.io), an operating system developed from scratch in the
 functional and statically typed language [OCaml](https://ocaml.org).  I've not
@@ -169,7 +171,7 @@ The OCaml runtime was reviewed by the French [Agence nationale de la sécurité 
 leading to some changes, such as separation of immutable strings (`String`) from mutable byte vectors (`Bytes`).
 
 The attack surface is still big enough:  logical issues, resource management, and there is no access
-control.  This is fine for this website, publishing of content is "protected" by relying on GitHub's
+control.  This website does not need access control, publishing of content is protected by relying on GitHub's
 access control.
 
 I hope I gave some insight into what the purpose of an operating systems is, and
