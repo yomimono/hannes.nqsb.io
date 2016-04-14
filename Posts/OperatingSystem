@@ -133,7 +133,7 @@ system (the markdown content is held in memory with irmin!), no user management 
 
 At compile (configuration) time, the TLS keys are baked into the image, in addition to the url of the remote
 git repository, the IPv4 address and ports the image should use:
-The full command line for configuring this website is: `mirage configure --no-opam --xen -i Posts -n "full stack engineer" -r https://github.com/hannesm/hannes.nqsb.io.git --dhcp false --net direct --ip 198.167.222.205 --netmask 255.255.255.0 --gateways 198.167.222.1 --tls 443 --port 80`.
+The full command line for configuring this website is: `mirage configure --no-opam --xen -i Posts -n "full stack engineer" -r https://github.com/hannesm/hannes.nqsb.io.git --dhcp false --network 0 --ip 198.167.222.205 --netmask 255.255.255.0 --gateways 198.167.222.1 --tls 443 --port 80`.
 It relies on the fact that the TLS certificate chain and private key are in the `tls/` subdirectory, which is transformed to code and included in the image (using [crunch](https://github.com/mirage/ocaml-crunch)).   An improvement would be to [use an ELF section](https://github.com/mirage/mirage/issues/489), but there is no code yet.
 After configuring and installing the required dependencies, a `make` builds the statically linked image.
 
