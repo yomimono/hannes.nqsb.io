@@ -20,62 +20,62 @@ from designing over experimenting to debugging why it does not do what I want.
 In the end, the computer is dumb and executes only what you (or code from
 someone else which you rely on) tell it to do.
 
-To not have to write assembly code manually, programming languages were
-developed as an abstraction.  There exist different flavours which vary in
-expressive power and static guarantees.  Lots claim to be general purpose or
-systems languages; whether it is convenient to develop in depends on the choices
-the language designer made, and whether there is sufficient tooling around it.
+To abstract from assembly code, which is not portable, programming languages were
+developed.  Different flavoured languages vary in
+expressive power and static guarantees.  Many claim to be general purpose or
+systems languages; depending on the choices of
+the language designer and tooling around the language, it is a language which lets you conveniently develop programs in.
 
-A language design decides on the builtin abstraction mechanisms, each of which
-is both a burden and a blessing.  They might be interfering (bad design),
-orthogonal (composable), or even synergistic (interfere in a positive way, such as anonymous functions and higher order functions, or ADT and pattern matching).  Another choice is whether the language includes a type
-system, and if the developer might cheat on it.  A strong static type system
+A language designer decides on the builtin abstraction mechanisms, each of which
+is both a burden and a blessing:  it might be interfering (which to use? `for` or `while`, `trait` or `object`),
+orthogonal (one way to do it), or even synergistic (higher order functions and anonymous functions).  Another choice is whether the language includes a type
+system, and if the developer can cheat on it (by allowing arbitrary type casts, a *weak* type system).  A strong static type system
 allows a developer to encode invariants, without the need to defer to runtime
-assertions.  Type systems differ in their expressive power, the new kid on the
-block is [dependent typing](https://en.wikipedia.org/wiki/Dependent_type), which
-allows to encode values in types (list of length 3).  Tooling depends purely
-on the community size, natural selection will prevail the useful tools (size gives rise to other factors such as inertia, activity on stack overflow).
+assertions.  Type systems differ in their expressive power ([dependent typing](https://en.wikipedia.org/wiki/Dependent_type) are the hot research area at the moment).  Tooling depends purely
+on the community size, natural selection will prevail the useful tools
+(community size gives inertia to other factors: demand for libraries, package manager, activity on stack overflow, etc.).
+
+
 
 ## Why OCaml?
 
 As already mentioned in [other](https://hannes.nqsb.io/Posts/About)
 [articles](https://hannes.nqsb.io/Posts/OperatingSystem) here, it is a
-combination of large enough community, runtime performance, modularity,
-well-thought abstraction mechanisms, age (it recently turned 20), and functional features.
+combination of sufficiently large community, runtime stability and performance, modularity,
+carefully thought out abstraction mechanisms, maturity (OCaml recently turned 20), and functional features.
 
 The latter is squishy, I'll try to explain it a bit: you define your concrete
-*data types* as *products* (`int * int` for a pair of integers), *records* (`{
-foo : int ; bar : int }` in case you want to name fields), variants (sum types, tagged union in C `type list = Nil | Cons of a * a list`), and compose them by
-using [*algebraic data types*](https://en.wikipedia.org/wiki/Algebraic_data_type).  Whenever you have a
-state machine, you can encode the state as an algebraic data type and use a
-`match` to handle the cases.  The compiler checks whether your match is complete
-(contains a line for each member of the ADT).  Another important aspect of
+*data types* as *products* (`int * int`, a tuple of integers), *records* (`{
+foo : int ; bar : int }` to name fields), sums (`type state = Initial | WaitingForKEX | Established`, or variants, or tagged union in C).
+These are called [*algebraic data types*](https://en.wikipedia.org/wiki/Algebraic_data_type).  Whenever you have a
+state machine, you can encode the state as a variant and use a
+pattern match to handle the different cases.  The compiler checks whether your pattern match is complete
+(contains a line for each member of the variant).  Another important aspect of
 functional programming is that you can pass functions to other functions
 (*higher-order functions*).  Also, *recursion* is fundamental for functional
-programming (there's no need for one or multiple programming language constructs
-to provide loops), instead functions call themselves (hopefully with some
-decreasing argument, thus they will terminate).
+programming: a function calls itself -- combined with a variant type (such as
+`type list = Nil | Cons of a * a list`) it is trivial to show termination.
 
-A real program is boring without *side effects*, such as mutable state and
-input/output.  These are the bits which make the program interesting by
-communicating with other systems or humans.  They should be isolated and
-explicitly stated (e.g. in the type).  Especially algorithm or protocol
-implementations should not handle side effects internally, but leave this to an
-effectful layer on top of it, separating the concerns.  Those pure functions
-(which get arguments and return a value, no other way of communication) inside
+*Side effects* make the program interesting, because they
+communicate with other systems or humans.  Side effects should be isolated and
+explicitly stated (in the type!).  Algorithm and protocol
+implementations should not deal with side effects internally, but leave this to an
+effectful layer on top of it.  The internal pure functions
+(which receive arguments and return values, no other way of communication) inside
 preserve [*referential
 transparency*](https://en.wikipedia.org/wiki/Referential_transparency_%28computer_science%29).
+Modularity helps to separate the concerns.
 
 The holy grail is [declarative programing](https://en.wikipedia.org/wiki/Declarative_programming), write *what*
-a program should achieve, not *how to* achieve it (like it is done imperatively).
+a program should achieve, not *how to* achieve it (like often done in an imperative language).
 
 OCaml has a object and class system, which I do not use.  OCaml also contains
 exceptions (and annoyingly the standard library (e.g. `List.find`) is full of
-them), which I avoid, and libraries should not expose any exception (apart from out of memory).  If your
-processing code might end up in an error state (common for parsers of input
-received via network), return a value of an algebraic data type with two
-constructors, `Ok` and `Error`.  In this way, the caller has to handle
-both cases explicitly.
+them), which I avoid as well.  Libraries should not expose any exception (apart from out of memory, a really exceptional situation).  If your
+code might end up in an error state (common for parsers which process input
+from the network), return a variant type as value (`type result = Ok of 'a | Error of 'b`).
+That way, the caller has to handle
+both the success and failure case explicitly.
 
 ## Where to start?
 
@@ -84,12 +84,12 @@ tutorials](https://ocaml.org/learn/tutorials/) and examples, including
 [introductionary
 material](https://ocaml.org/learn/tutorials/get_up_and_running.html) how to get
 started with a new library.  Editor integration (at least for emacs, vim, and
-atom) via [merlin](https://github.com/the-lambda-church/merlin/wiki) is
+atom) is via [merlin](https://github.com/the-lambda-church/merlin/wiki)
 available.
 
 There are also [programming
-guidelines](https://ocaml.org/learn/tutorials/guidelines.html) available, which
-is worth a read periodically.
+guidelines](https://ocaml.org/learn/tutorials/guidelines.html), best to re-read
+on a regular schedule.
 
 A very good starting book is [OCaml from the very
 beginning](http://ocaml-book.com/) to learn the functional ideas in OCaml (also
@@ -97,43 +97,44 @@ its successor [More
 OCaml](http://ocaml-book.com/more-ocaml-algorithms-methods-diversions/)).
 Another good book is [real world OCaml](https://realworldocaml.org), though it
 is focussed around the "core" library (which I do not recommend due to its
-size).
+huge size).
 
 [Opam](https://opam.ocaml.org) is the OCaml package manager.
 The [opam repository](https://opam.ocaml.org/packages/) contains over 1000
 libraries.  The quality varies, I personally like the small libraries done by
 [Daniel Bünzli](http://erratique.ch/software), as well as our
-[nqsb](https://nqsb.io) libraries (see [mirleft](https://github.com/mirleft)),
+[nqsb](https://nqsb.io) libraries (see [mirleft org](https://github.com/mirleft)),
 [notty](https://github.com/pqwy/notty).  A concise library (not much code),
 including tests, documentation, etc. is
 [hkdf](https://github.com/hannesm/ocaml-hkdf).  For testing I currently prefer
 [alcotest](https://github.com/mirage/alcotest).  For cooperative tasks,
-[lwt](https://github.com/ocsigen/lwt) is decent (though a bit convoluted by
-integrating too much).
+[lwt](https://github.com/ocsigen/lwt) is decent (though it is a bit convoluted by
+integrating too many features).
 
 I try to stay away from big libraries such as ocamlnet, core, extlib, batteries.
-When I develop a library I rather not force any use to depend on such a large
-code base.  Since opam is widely used, distributing libraries became easier,
+When I develop a library I do not want to force anyone into using such large
+code bases.  Since opam is widely used, distributing libraries became easier,
 thus the trend is towards small libraries (such as
-[astring](http://erratique.ch/software/astring) and
-[ptime](http://erratique.ch/software/ptime)).
+[astring](http://erratique.ch/software/astring),
+[ptime](http://erratique.ch/software/ptime),
+[PBKDF](https://github.com/abeaumont/ocaml-pbkdf), [scrypt](https://github.com/abeaumont/ocaml-scrypt-kdf)).
 
-What is needed depends on your concrete use case or plan.  There are lots of
+What is needed?  This depends on your concrete goal.  There are lots of
 issues in lots of libraries, the MirageOS project also has a [list of
-projects](https://github.com/mirage/mirage-www/wiki/Pioneer-Projects) which
-would be useful.  I personally would like to have a native [simple
+Pioneer projects](https://github.com/mirage/mirage-www/wiki/Pioneer-Projects) which
+would be useful to have.  I personally would like to have a native [simple
 authentication and security layer (SASL)](https://tools.ietf.org/html/rfc4422)
-implementation in OCaml (amongst other things, such as using an [ELF section for
-data](https://github.com/mirage/mirage/issues/489), and
+implementation in OCaml soon (amongst other things, such as using an [ELF section for
+data](https://github.com/mirage/mirage/issues/489),
 [strtod](https://github.com/mirage/mirage-platform/issues/118)).
 
 A [dashboard](https://github.com/rudenoise/mirage-dashboard) for MirageOS is
-under development, which will hopefully ease tracking of MirageOS active
-development.  I setup an [atom
+under development, which will hopefully ease tracking of what is being actively
+developed within MirageOS.  Because I'm impatient, I setup an [atom
 feed](https://github.com/miragebot.private.atom?token=ARh4hnusZ1kC_bQ_Q6_HUzQteEEGTqy8ks61Fm2LwA==)
-which watches several MirageOS-related repositories.
+which watches lots of MirageOS-related repositories.
 
-I hope I gave some insight into OCaml.  A longer read is our Usenix 2015 paper
+I hope I gave some insight into OCaml, and why I currently enjoy it.  A longer read on applicability of OCaml is our Usenix 2015 paper
 [Not-quite-so-broken TLS: lessons in re-engineering a security protocol
 specification and
 implementation](https://nqsb.io/nqsbtls-usenix-security15.pdf).  I'm interested in feedback, either via
