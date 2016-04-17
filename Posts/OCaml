@@ -54,7 +54,7 @@ pattern match to handle the different cases.  The compiler checks whether your p
 functional programming is that you can pass functions to other functions
 (*higher-order functions*).  Also, *recursion* is fundamental for functional
 programming: a function calls itself -- combined with a variant type (such as
-`type list = Nil | Cons of a * a list`) it is trivial to show termination.
+`type 'a list = Nil | Cons of 'a * 'a list`) it is trivial to show termination.
 
 *Side effects* make the program interesting, because they
 communicate with other systems or humans.  Side effects should be isolated and
@@ -73,7 +73,7 @@ OCaml has a object and class system, which I do not use.  OCaml also contains
 exceptions (and annoyingly the standard library (e.g. `List.find`) is full of
 them), which I avoid as well.  Libraries should not expose any exception (apart from out of memory, a really exceptional situation).  If your
 code might end up in an error state (common for parsers which process input
-from the network), return a variant type as value (`type result = Ok of 'a | Error of 'b`).
+from the network), return a variant type as value (`type ('a, 'b) result = Ok of 'a | Error of 'b`).
 That way, the caller has to handle
 both the success and failure case explicitly.
 
