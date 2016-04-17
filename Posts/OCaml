@@ -26,15 +26,15 @@ expressive power and static guarantees.  Lots claim to be general purpose or
 systems languages; whether it is convenient to develop in depends on the choices
 the language designer made, and whether there is sufficient tooling around it.
 
-A language designed decides on the builtin abstraction mechanisms, each of which
-is both a burden and a blessing.  They might be interfering (bad design) or
-orthogonal (composable).  Another choice is whether the language includes a type
+A language design decides on the builtin abstraction mechanisms, each of which
+is both a burden and a blessing.  They might be interfering (bad design),
+orthogonal (composable), or even synergistic (interfere in a positive way, such as anonymous functions and higher order functions, or ADT and pattern matching).  Another choice is whether the language includes a type
 system, and if the developer might cheat on it.  A strong static type system
 allows a developer to encode invariants, without the need to defer to runtime
 assertions.  Type systems differ in their expressive power, the new kid on the
 block is [dependent typing](https://en.wikipedia.org/wiki/Dependent_type), which
 allows to encode values in types (list of length 3).  Tooling depends purely
-on the community size, natural selection will prevail the useful tools.
+on the community size, natural selection will prevail the useful tools (size gives rise to other factors such as inertia, activity on stack overflow).
 
 ## Why OCaml?
 
@@ -45,7 +45,7 @@ well-thought abstraction mechanisms, age (it recently turned 20), and functional
 
 The latter is squishy, I'll try to explain it a bit: you define your concrete
 *data types* as *products* (`int * int` for a pair of integers), *records* (`{
-foo : int ; bar : int }` in case you want to name fields), and compose them by
+foo : int ; bar : int }` in case you want to name fields), variants (sum types, tagged union in C `type list = Nil | Cons of a * a list`), and compose them by
 using [*algebraic data types*](https://en.wikipedia.org/wiki/Algebraic_data_type).  Whenever you have a
 state machine, you can encode the state as an algebraic data type and use a
 `match` to handle the cases.  The compiler checks whether your match is complete
@@ -71,7 +71,7 @@ a program should achieve, not *how to* achieve it (like it is done imperatively)
 
 OCaml has a object and class system, which I do not use.  OCaml also contains
 exceptions (and annoyingly the standard library (e.g. `List.find`) is full of
-them), which I avoid, and libraries should not expose any exception.  If your
+them), which I avoid, and libraries should not expose any exception (apart from out of memory).  If your
 processing code might end up in an error state (common for parsers of input
 received via network), return a value of an algebraic data type with two
 constructors, `Ok` and `Error`.  In this way, the caller has to handle
@@ -116,7 +116,7 @@ When I develop a library I rather not force any use to depend on such a large
 code base.  Since opam is widely used, distributing libraries became easier,
 thus the trend is towards small libraries (such as
 [astring](http://erratique.ch/software/astring) and
-[ptime](http://erratique.ch/software/ptime).
+[ptime](http://erratique.ch/software/ptime)).
 
 What is needed depends on your concrete use case or plan.  There are lots of
 issues in lots of libraries, the MirageOS project also has a [list of
