@@ -136,8 +136,6 @@ which watches several MirageOS-related repositories.
 I hope I gave some insight into OCaml.  A longer read is our Usenix 2015 paper
 [Not-quite-so-broken TLS: lessons in re-engineering a security protocol
 specification and
-implementation](https://nqsb.io/nqsbtls-usenix-security15.pdf).
-
-I'm interested in feedback, either via
+implementation](https://nqsb.io/nqsbtls-usenix-security15.pdf).  I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
