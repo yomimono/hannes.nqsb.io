@@ -41,7 +41,7 @@ on the community size, natural selection will prevail the useful tools.
 As already mentioned in [other](https://hannes.nqsb.io/Posts/About)
 [articles](https://hannes.nqsb.io/Posts/OperatingSystem) here, it is a
 combination of large enough community, runtime performance, modularity,
-well-thought abstraction mechanisms, age, and functional features.
+well-thought abstraction mechanisms, age (it recently turned 20), and functional features.
 
 The latter is squishy, I'll try to explain it a bit: you define your concrete
 *data types* as *products* (`int * int` for a pair of integers), *records* (`{
@@ -133,6 +133,6 @@ development.  I setup an [atom
 feed](https://github.com/miragebot.private.atom?token=ARh4hnusZ1kC_bQ_Q6_HUzQteEEGTqy8ks61Fm2LwA==)
 which watches several MirageOS-related repositories.
 
-I hope I gave some insight into OCaml. I'm interested in feedback, either via
+I hope I gave some insight into OCaml.  I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
