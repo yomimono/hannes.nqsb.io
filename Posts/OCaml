@@ -1,0 +1,138 @@
+---
+title: Why OCaml
+author: hannes
+tags: overview, background
+abstract: a gentle introduction into OCaml
+---
+
+## Remarks
+
+- Canopy now sends out appropriate [content type](https://github.com/Engil/Canopy/pull/23) HTTP headers
+- [mirage-http 2.5.2](https://github.com/mirage/mirage-http/releases/tag/v2.5.2) was released to [opam](https://opam.ocaml.org/packages/mirage-http/mirage-http.2.5.2/) which fixes the resource leak
+- regression in [mirage-net-xen 1.6.0](https://github.com/mirage/mirage-net-xen/issues/39), I'm back on 1.4.1
+- I stumbled upon [too large crunch for MirageOS](https://github.com/mirage/mirage/issues/396), no solution apart from using a FAT image ([putting the data into an ELF section](https://github.com/mirage/mirage/issues/489) would solve the issue, if anyone is interested in MirageOS, that'd be a great project to start with)
+- unrelated, [X.509 0.5.2](https://opam.ocaml.org/packages/x509/x509.0.5.2/) fixes [this bug](https://github.com/mirleft/ocaml-x509/commit/1a1476308d24bdcc49d45c4cd9ef539ca57461d2) in certificate chain construction
+
+## Programming
+
+For me, programming is fun.  I enjoy doing it, every single second.  All the way
+from designing over experimenting to debugging why it does not do what I want.
+In the end, the computer is dumb and executes only what you (or code from
+someone else which you rely on) tell it to do.
+
+To not have to write assembly code manually, programming languages were
+developed as an abstraction.  There exist different flavours which vary in
+expressive power and static guarantees.  Lots claim to be general purpose or
+systems languages; whether it is convenient to develop in depends on the choices
+the language designer made, and whether there is sufficient tooling around it.
+
+A language designed decides on the builtin abstraction mechanisms, each of which
+is both a burden and a blessing.  They might be interfering (bad design) or
+orthogonal (composable).  Another choice is whether the language includes a type
+system, and if the developer might cheat on it.  A strong static type system
+allows a developer to encode invariants, without the need to defer to runtime
+assertions.  Type systems differ in their expressive power, the new kid on the
+block is [dependent typing](https://en.wikipedia.org/wiki/Dependent_type), which
+allows to encode values in types (list of length 3).  Tooling depends purely
+on the community size, natural selection will prevail the useful tools.
+
+## Why OCaml?
+
+As already mentioned in [other](https://hannes.nqsb.io/Posts/About)
+[articles](https://hannes.nqsb.io/Posts/OperatingSystem) here, it is a
+combination of large enough community, runtime performance, modularity,
+well-thought abstraction mechanisms, age, and functional features.
+
+The latter is squishy, I'll try to explain it a bit: you define your concrete
+*data types* as *products* (`int * int` for a pair of integers), *records* (`{
+foo : int ; bar : int }` in case you want to name fields), and compose them by
+using [*algebraic data types*](https://en.wikipedia.org/wiki/Algebraic_data_type).  Whenever you have a
+state machine, you can encode the state as an algebraic data type and use a
+`match` to handle the cases.  The compiler checks whether your match is complete
+(contains a line for each member of the ADT).  Another important aspect of
+functional programming is that you can pass functions to other functions
+(*higher-order functions*).  Also, *recursion* is fundamental for functional
+programming (there's no need for one or multiple programming language constructs
+to provide loops), instead functions call themselves (hopefully with some
+decreasing argument, thus they will terminate).
+
+A real program is boring without *side effects*, such as mutable state and
+input/output.  These are the bits which make the program interesting by
+communicating with other systems or humans.  They should be isolated and
+explicitly stated (e.g. in the type).  Especially algorithm or protocol
+implementations should not handle side effects internally, but leave this to an
+effectful layer on top of it, separating the concerns.  Those pure functions
+(which get arguments and return a value, no other way of communication) inside
+preserve [*referential
+transparency*](https://en.wikipedia.org/wiki/Referential_transparency_%28computer_science%29).
+
+The holy grail is [declarative programing](https://en.wikipedia.org/wiki/Declarative_programming), write *what*
+a program should achieve, not *how to* achieve it (like it is done imperatively).
+
+OCaml has a object and class system, which I do not use.  OCaml also contains
+exceptions (and annoyingly the standard library (e.g. `List.find`) is full of
+them), which I avoid, and libraries should not expose any exception.  If your
+processing code might end up in an error state (common for parsers of input
+received via network), return a value of an algebraic data type with two
+constructors, `Ok` and `Error`.  In this way, the caller has to handle
+both cases explicitly.
+
+## Where to start?
+
+The [OCaml website](https://ocaml.org) contains a [variety of
+tutorials](https://ocaml.org/learn/tutorials/) and examples, including
+[introductionary
+material](https://ocaml.org/learn/tutorials/get_up_and_running.html) how to get
+started with a new library.  Editor integration (at least for emacs, vim, and
+atom) via [merlin](https://github.com/the-lambda-church/merlin/wiki) is
+available.
+
+There are also [programming
+guidelines](https://ocaml.org/learn/tutorials/guidelines.html) available, which
+is worth a read periodically.
+
+A very good starting book is [OCaml from the very
+beginning](http://ocaml-book.com/) to learn the functional ideas in OCaml (also
+its successor [More
+OCaml](http://ocaml-book.com/more-ocaml-algorithms-methods-diversions/)).
+Another good book is [real world OCaml](https://realworldocaml.org), though it
+is focussed around the "core" library (which I do not recommend due to its
+size).
+
+[Opam](https://opam.ocaml.org) is the OCaml package manager.
+The [opam repository](https://opam.ocaml.org/packages/) contains over 1000
+libraries.  The quality varies, I personally like the small libraries done by
+[Daniel Bünzli](http://erratique.ch/software), as well as our
+[nqsb](https://nqsb.io) libraries (see [mirleft](https://github.com/mirleft)),
+[notty](https://github.com/pqwy/notty).  A concise library (not much code),
+including tests, documentation, etc. is
+[hkdf](https://github.com/hannesm/ocaml-hkdf).  For testing I currently prefer
+[alcotest](https://github.com/mirage/alcotest).  For cooperative tasks,
+[lwt](https://github.com/ocsigen/lwt) is decent (though a bit convoluted by
+integrating too much).
+
+I try to stay away from big libraries such as ocamlnet, core, extlib, batteries.
+When I develop a library I rather not force any use to depend on such a large
+code base.  Since opam is widely used, distributing libraries became easier,
+thus the trend is towards small libraries (such as
+[astring](http://erratique.ch/software/astring) and
+[ptime](http://erratique.ch/software/ptime).
+
+What is needed depends on your concrete use case or plan.  There are lots of
+issues in lots of libraries, the MirageOS project also has a [list of
+projects](https://github.com/mirage/mirage-www/wiki/Pioneer-Projects) which
+would be useful.  I personally would like to have a native [simple
+authentication and security layer (SASL)](https://tools.ietf.org/html/rfc4422)
+implementation in OCaml (amongst other things, such as using an [ELF section for
+data](https://github.com/mirage/mirage/issues/489), and
+[strtod](https://github.com/mirage/mirage-platform/issues/118)).
+
+A [dashboard](https://github.com/rudenoise/mirage-dashboard) for MirageOS is
+under development, which will hopefully ease tracking of MirageOS active
+development.  I setup an [atom
+feed](https://github.com/miragebot.private.atom?token=ARh4hnusZ1kC_bQ_Q6_HUzQteEEGTqy8ks61Fm2LwA==)
+which watches several MirageOS-related repositories.
+
+I hope I gave some insight into OCaml. I'm interested in feedback, either via
+[twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
+GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
