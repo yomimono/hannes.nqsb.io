@@ -87,10 +87,6 @@ started with a new library.  Editor integration (at least for emacs, vim, and
 atom) is via [merlin](https://github.com/the-lambda-church/merlin/wiki)
 available.
 
-There are also [programming
-guidelines](https://ocaml.org/learn/tutorials/guidelines.html), best to re-read
-on a regular schedule.
-
 A very good starting book is [OCaml from the very
 beginning](http://ocaml-book.com/) to learn the functional ideas in OCaml (also
 its successor [More
@@ -99,12 +95,17 @@ Another good book is [real world OCaml](https://realworldocaml.org), though it
 is focussed around the "core" library (which I do not recommend due to its
 huge size).
 
+There are [programming
+guidelines](https://ocaml.org/learn/tutorials/guidelines.html), best to re-read
+on a regular schedule.  Daniel wrote [guidelines](http://erratique.ch/software/rresult/doc/Rresult.html#usage) how to handle with errors and results.
+
 [Opam](https://opam.ocaml.org) is the OCaml package manager.
 The [opam repository](https://opam.ocaml.org/packages/) contains over 1000
 libraries.  The quality varies, I personally like the small libraries done by
 [Daniel Bünzli](http://erratique.ch/software), as well as our
 [nqsb](https://nqsb.io) libraries (see [mirleft org](https://github.com/mirleft)),
-[notty](https://github.com/pqwy/notty).  A concise library (not much code),
+[notty](https://github.com/pqwy/notty).
+A concise library (not much code),
 including tests, documentation, etc. is
 [hkdf](https://github.com/hannesm/ocaml-hkdf).  For testing I currently prefer
 [alcotest](https://github.com/mirage/alcotest).  For cooperative tasks,
