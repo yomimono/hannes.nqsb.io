@@ -5,7 +5,7 @@ tags: overview, background
 abstract: a gentle introduction into OCaml
 ---
 
-## Remarks
+## Updates
 
 - Canopy now sends out appropriate [content type](https://github.com/Engil/Canopy/pull/23) HTTP headers
 - [mirage-http 2.5.2](https://github.com/mirage/mirage-http/releases/tag/v2.5.2) was released to [opam](https://opam.ocaml.org/packages/mirage-http/mirage-http.2.5.2/) which fixes the resource leak

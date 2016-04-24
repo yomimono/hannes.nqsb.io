@@ -1,0 +1,272 @@
+---
+title: Fitting the things together
+author: hannes
+tags: mirageos, http, tls
+abstract: building a simple website
+---
+
+## Updates
+
+- [Canopy](https://github.com/Engil/Canopy) improvements: [no bower anymore](https://github.com/Engil/Canopy/pull/26),  [HTTP caching support (via etags)](https://github.com/Engil/Canopy/pull/27), [listings now include dates](https://github.com/Engil/Canopy/pull/31), [dates are now in big-endian (y-m-d)](https://github.com/Engil/Canopy/pull/32)
+- [MirageOS call irclog from 2014-04-20](http://canopy.mirage.io/irclogs/20-04-2016)
+- blog article about [naive authentication service using MirageOS](https://abailly.github.io/posts/mirage-os-newbie.html)
+- [really good OCaml 4.03 lwn.net post](https://lwn.net/SubscriberLink/684128/1436601f401c1f09/)
+
+## Task
+
+Our task is to build a small kernel which provides a project website.  On our way we will wade through various layers using code examples.  The website itself contains a few paragraphs of text, some link lists, and our published papers in pdf form.
+
+*Spoiler alert* final result can be seen [here](https://nqsb.io), the full code [here](https://github.com/mirleft/nqsb.io).
+
+## A first idea
+
+We could go all the way to use [conduit](https://github.com/mirage/ocaml-conduit) for wrapping connections, and [mirage-http](https://github.com/mirage/mirage-http) (using [cohttp](https://github.com/mirage/ocaml-cohttp), a very lightweight HTTP server).  We'd just need to write routing code which in the end reads from a virtual file system, and some HTML and CSS for the actual site.
+
+Turns out, the conduit library is already 1.7 MB in size and depends on 34 libraries, cohttp is another 3.7 MB and 40 dependent libraries.
+Both libraries are actively developed, combined there were 25 releases within the last year.
+
+## Plan
+
+Let me state our demands more clearly:
+- easy to maintain
+- updates roughly 3 times a year
+- reasonable performance
+
+To achieve easy maintenance we keep build and run time dependencies small, use a single virtual machine image to ease deployment.  We try to develop only little new code.  Our general approach to performance is to do as little work as we can on each request, and precompute at compile time or once at startup as much as we can.
+
+### HTML code
+
+From the [tyxml description](http://ocsigen.org/tyxml/): "Tyxml provides a set of combinators to build Html5 and Svg documents. These combinators use the OCaml type-system to ensure the validity of the generated Html5 and Svg."  A [tutorial](http://ocsigen.org/tyxml/dev/manual/intro) is available.
+
+You can plug elements (or attributes) inside each other only if the HTML specification allows this (no `<body>` inside of a `<body>`).  An example that can be rendered to a `div` with `pcdata` inside.
+
+```OCaml
+open Html5.M
+
+let mycontent =
+  div ~a:[ a_class ["content"] ]
+    [ pcdata "This is a fabulous content." ]
+```
+
+In the end, our web server will deliver the page as a string, thus we need some boilerplate (I copied this from Canopy, there might be another way to achieve it) to transform `mycontent` into a string:
+
+```OCaml
+module StringPrinter = struct
+    type out = string
+    type m = string
+
+    let empty = ""
+    let concat = (^)
+    let put a = a
+    let make a = a
+end
+
+module StringHtml = Html5.Make_printer(StringPrinter)
+```
+
+The `StringHtml` module contains a function `val print : doc -> bytes`.  We can try it on our example:
+
+```OCaml
+# StringHtml.print mycontent
+
+Error: This expression has type ([> Html5_types.div ] as 'a) elt but an expression was expected of type doc = [ `Html ] elt Type 'a = [> `Div ] is not compatible with type [ `Html ]
+The second variant type does not allow tag(s) `Div
+```
+
+This is pretty nice, we can only print complete HTML5 documents this way (there are printers for standalone elements as well), and will not be able to serve an incomplete page fragment!
+
+To get it up and running, we wrap it inside of a `html` which has a `header` and a `body`:
+
+```OCaml
+# StringHtml.print (html (head (title (pcdata "title")) []) (body [ mycontent ]))
+
+"<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>title</title></head><body><div class=\"content\">This is a fabulous content.</div></body></html>"
+```
+
+The HTML content is done (in a pure way, no effects!), let's work on the binary pdfs.
+Our full page source (CSS embedding is done via a string, no fancy types there (yet!?)) is [on GitHub](https://github.com/mirleft/nqsb.io/blob/master/page.ml).
+
+### Binary data
+
+There are various ways how to embed binary data into MirageOS:
+- connect an external (FAT) disk image; upside: works for large data, independent, can be shared with other systems; downside: an extra file to distribute onto the production machine, lots of code (block storage and file system access) which can contain directory traversals and other issues
+- embed as a [special ELF section](https://github.com/mirage/mirage/issues/489); downside: not yet implemented
+- embed strings in the code; upside: no deployment hassle, works everywhere for small files; downside: need to encode binary to string chunks during build and decode in the MirageOS kernel, [it breaks with large files](https://github.com/mirage/mirage/issues/396)
+- likely others such as use a tar image, read it during build or runtime; wait during bootup on a network socket (or connect somewhere) to receive the static data; use a remote git repository
+
+We'll use the embedding.  There is support for this built in the mirage tool via [crunch](https://github.com/mirage/ocaml-crunch).  If you `crunch "foo"` in `config.ml`, it will create a [read-only key value store](https://github.com/mirage/mirage/blob/54736660606ca06aad1a061ac4276cc45ead1815/types/V1.mli#L931) (`KV_RO`) named `static1.ml` containing everything in the local `"foo"` directory during `mirage configure`.
+Each file is encoded as a list of chunks, each 4096 bytes in size in ASCII (octal escaping `\000` of control characters).
+
+The API is:
+
+```OCaml
+val read : t -> string -> int -> int -> [ `Ok of page_aligned_buffer list | `UnknownKey of string ]
+val size : t -> string -> [ `Ok of int64 | `UnknownKey of string ]
+```
+
+The lookup needs to retrieve first the chunk list for the given filename, and then splice the fragments together and return the requested offset and length as page aligned structures.  Since this is not for free, we will read our pdfs only once during startup, and then keep a reference to the full pdfs which we deliver upon request:
+
+```OCaml
+let read_full_kv kv name =
+  KV.size kv name >>= function
+  | `Error (KV.Unknown_key e) -> Lwt.fail (Invalid_argument e)
+  | `Ok size ->
+    KV.read kv name 0 (Int64.to_int size) >>= function
+    | `Error (KV.Unknown_key e) -> Lwt.fail (Invalid_argument e)
+    | `Ok bufs -> Lwt.return (Cstruct.concat bufs)
+
+let start kv =
+  let d_nqsb = Page.render in
+  read_full_kv kv "nqsbtls-usenix-security15.pdf" >>= fun d_usenix ->
+  read_full_kv kv "tron.pdf" >>= fun d_tron ->
+  ...
+```
+
+The funny `>>=` syntax notes that something is doing input/output, which might be blocking or interrupted or failing.  It composes effects using an imperative style (semicolon in other languages, another term is monadic bind).  The `Page.render` function uses the above explained `StringHtml.print` behind the scenes (which is pure, thus no `>>=`).
+
+We now have all the resources we wanted available inside our MirageOS kernel.  There is some cost during configuration (converting binary into code), and startup (concatenating lists, lookups, rendering HTML into string representation).
+
+### Building a HTTP response
+
+HTTP consists of headers and data, we already have the data.  A HTTP header contains of an initial status line (`HTTP/1.1 200 OK`), and a list of keys-values, each of the form `key + ": " + value + "\r\n"` (`+` is string concatenation).   The header is separated with `"\r\n\r\n"` from the data:
+
+```OCaml
+let http_header ~status xs =
+  let headers = List.map (fun (k, v) -> k ^ ": " ^ v) xs in
+  let lines = status :: headers @ [ "\r\n" ] in
+  String.concat "\r\n" lines
+
+let header content_type =
+  http_header ~status:"HTTP/1.1 200 OK" [ ("content-type", content_type) ]
+```
+
+We also know statically (at compile time) which headers to send: `content-type` should be `text/html` for our main page, and `application/pdf` for the pdf files.  The status code `200` is used in HTTP to signal that the request is successful.  We can combine the headers and the data during startup, because our single communication channel is HTTP, and thus we don't need access to the data or headers separately (support for HTTP caching etc. is out of scope).
+
+We are now finished with the response side of HTTP, and can emit three different resources.  Now, we need to handle incoming HTTP requests and dispatch them to the resource.  Let's first to a brief detour to HTTPS (and thus TLS).
+
+### Security via HTTPS
+
+Transport layer security is a protocol on top of TCP providing an end-to-end encrypted and authenticated channel.  In our setting, our web server has a certificate and a private key to authenticate itself to the clients.
+
+A certificate is a token containing a public key, a name, a validity period, and a signature from the authority which issued the certificate (hopefully by verifying that the name is owned by the requestor).  I used [let's encrypt](https://letsencrypt.org/) (actually the [letsencrypt.sh](https://github.com/lukas2511/letsencrypt.sh/) client (would be great to have one natively in OCaml) to get a signed certificate, which is widely accepted by web browsers.
+
+The MirageOS interface for TLS is that it takes a [`FLOW`](https://github.com/mirage/mirage/blob/54736660606ca06aad1a061ac4276cc45ead1815/types/V1.mli#L108) (byte stream, e.g. TCP) and provides a `FLOW`.  Libraries can be written to be agnostic whether they use a TCP stream or a TLS session to carry data.
+
+We need to setup our kernel that on new connections to the HTTPS port, it should first do a TLS handshake, and afterwards talk the HTTP protocol.  For a TLS handshake we need to put the certificate and private key into the kernel, using yet another key value store (`crunch "tls"`).
+
+On startup we read the certificate and private key, and use that to create a [TLS server config](https://mirleft.github.io/ocaml-tls/Config.html#VALserver):
+
+```OCaml
+let start stack kv keys =
+  read_cert keys "nqsb" >>= fun c_nqsb ->
+  let config = Tls.Config.server ~certificates:(`Single c_nqsb) () in
+  S.listen_tcpv4 stack ~port:443 (tls_accept config)
+```
+
+The `listen_tcpv4` is provided by the [stackv4 module](https://github.com/mirage/mirage/blob/54736660606ca06aad1a061ac4276cc45ead1815/types/V1.mli#L754), and gets a stack, a port number (HTTPS uses 443), and a function which receives a flow instance.
+
+```OCaml
+let tls_accept cfg tcp =
+  TLS.server_of_flow cfg tcp >>= function
+    | `Error _ | `Eof -> TCP.close tcp
+    | `Ok tls  -> ...
+```
+
+The `server_of_flow` is provided by the [Mirage TLS layer](https://mirleft.github.io/ocaml-tls/Tls_mirage.Make.html#VALserver_of_flow).  It can fail, if the client and server do not speak a common protocol suite, ciphersuite, or if one of the sides behaves non-protocol compliant.
+
+To wrap up, we managed to listen on the HTTPS port and establish TLS sessions for each incoming request.  We have our resources available, and now need to dispatch the request onto the resource.
+
+### HTTP request handling
+
+HTTP is a string based protocol, the first line of the request contains the method and resource which the client wants to access, `GET / HTTP/1.1`.  We could read a single line from the client, and cut the part between `GET` and `HTTP/1.1` to deliver the resource.
+
+This would either need some (brittle?) string processing, or a full-blown HTTP library on our side.  "I'm sorry Dave, I can't do that".  There is no way we'll do string processing on data received from the network for this.
+
+Looking a bit deeper into TLS, there is a specification for [server name indication](https://tools.ietf.org/html/rfc3546#section-3.1) from 2003.  The main purpose is to run on a single IP(v4) address multiple TLS services.  The client indicates in the TLS handshake what the server name is it wants to talk to.  This extension looks [in wikipedia](https://en.wikipedia.org/wiki/Server_Name_Indication) widely enough deployed.
+
+During the TLS handshake there is already some server name information exposed, and we have a very small set of available resources.  Thanks to let's encrypt, generating certificates is easy and free of cost.
+
+And, if we're down to a single resource, we can use the same technique used by [David](https://github.com/pqwy) in
+the [BTC Piñata](http://ownme.ipredator.se): just send the resource back without waiting for a request.
+
+### Putting it all together
+
+What we need is a hostname for each resource, and certificates and private keys for them, or a single certificate with all hostnames as alternative names.
+
+Our TLS library supports to select a certificate chain based on the requested name (look [here](https://mirleft.github.io/ocaml-tls/Config.html#TYPEown_cert)).  The following snippet is a setup to use the `nqsb.io` certificate chain by default (if no SNI is provided, or none matches), and also have a `usenix15` and a `tron` certificate chain.
+
+```OCaml
+let start stack keys kv =
+  read_cert keys "nqsb" >>= fun c_nqsb ->
+  read_cert keys "usenix15" >>= fun c_usenix ->
+  read_cert keys "tron" >>= fun c_tron ->
+  let config = Tls.Config.server ~certificates:(`Multiple_default (c_nqsb, [ c_usenix ; c_tron])) () in
+  S.listen_tcpv4 stack ~port:443 (tls_accept config) ;
+```
+
+Back to dispatching code.  We can extract the hostname information from an opaque `tls` value (the epoch data is fully described [here](https://mirleft.github.io/ocaml-tls/Core.html#TYPEepoch_data):
+
+```OCaml
+let extract_name tls =
+  match TLS.epoch tls with
+   | `Error -> None
+   | `Ok e -> e.Tls.Core.own_name
+```
+
+Since this TLS extension is optional, the return type will be a string option.
+
+Now, putting the dispatch together we need a function that gets all resources and the tls state value, and returns the data to send out:
+
+```OCaml
+let dispatch nqsb usenix tron tls =
+  match extract_name tls with
+   | Some "usenix15.nqsb.io" -> usenix
+   | Some "tron.nqsb.io" ->  tron
+   | Some "nqsb.io" ->  nqsb
+   | _ -> nqsb
+```
+
+This is again pure code, we need to put it now into the handler, our `tls_accept` calls the provided function with the tls flow:
+
+```OCaml
+let tls_accept f cfg tcp =
+  TLS.server_of_flow cfg tcp >>= function
+   | `Error _ | `Eof -> TCP.close tcp
+   | `Ok tls  -> Tls.writev tls (f tls) >>= fun _ -> TLS.close tls
+```
+
+And our full startup code:
+
+```OCaml
+let start stack keys kv =
+  let d_nqsb = [ header "text/html;charset=utf-8" ; Page.render ] in
+  read_pdf kv "nqsbtls-usenix-security15.pdf" >>= fun d_usenix ->
+  read_pdf kv "tron.pdf" >>= fun d_tron ->
+  let f = dispatch d_nqsb d_usenix d_tron in
+
+  read_cert keys "nqsb" >>= fun c_nqsb ->
+  read_cert keys "usenix15" >>= fun c_usenix ->
+  read_cert keys "tron" >>= fun c_tron ->
+  let config = Tls.Config.server ~certificates:(`Multiple_default (c_nqsb, [ c_usenix ; c_tron])) () in
+
+  S.listen_tcpv4 stack ~port:443 (tls_accept f config) ;
+  S.listen stack
+```
+
+That's it, the [nqsb.io](https://nqsb.io) contains slightly more code to log onto a console, and to redirect requests on port 80 (HTTP) to port 443 (by signaling a `301 Moved permanently` HTTP status code).
+
+## Conclusion
+
+A comparison using Firefox builtin network diagnostics shows that the waiting before receiving data is minimal (3ms, even spotted 0ms).
+
+[<img src="https://www.cl.cam.ac.uk/~hm519/performance-nqsbio.png" title="latency of our website" width="50%" />](https://www.cl.cam.ac.uk/~hm519/performance-nqsbio.png)
+
+We do not render HTML for each request, we do not splice data together, we *don't even read the client request*.  And I'm sure we can improve the performance even more by profiling.
+
+We saw a journey from typed XML over key value stores, HTTP, TLS, and HTTPS.  The actual application code of nqsb,io is less than 100 lines of OCaml.  We used MirageOS for our minimal HTTPS website, serving a *single resource per hostname*.  We depend (directly) on the tyxml library, the mirage tool and network stack, and the tls library.  That's it.
+
+There is a long list of potential features, such as full HTTP protocol compliance (caching, favicon, ...), logging, natively getting let's encrypt certificates -- but in the web out there it is sufficient to get picked up by search engines, and the maintenance is marginal.
+
+I'm interested in feedback, either via
+[twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
+GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
