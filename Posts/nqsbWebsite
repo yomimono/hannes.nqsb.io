@@ -267,6 +267,8 @@ We saw a journey from typed XML over key value stores, HTTP, TLS, and HTTPS.  Th
 
 There is a long list of potential features, such as full HTTP protocol compliance (caching, favicon, ...), logging, natively getting let's encrypt certificates -- but in the web out there it is sufficient to get picked up by search engines, and the maintenance is marginal.
 
+For a start in MirageOS unikernels, look into our [mirage-skeleton](https://github.com/mirage/mirage-skeleton) project, and into the [/dev/winter](https://github.com/mattgray/devwinter2016/) presentation by Matt Gray.
+
 I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
