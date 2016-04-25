@@ -14,7 +14,7 @@ abstract: building a simple website
 
 ## Task
 
-Our task is to build a small kernel which provides a project website.  On our way we will wade through various layers using code examples.  The website itself contains a few paragraphs of text, some link lists, and our published papers in pdf form.
+Our task is to build a small unikernel which provides a project website.  On our way we will wade through various layers using code examples.  The website itself contains a few paragraphs of text, some link lists, and our published papers in pdf form.
 
 *Spoiler alert* final result can be seen [here](https://nqsb.io), the full code [here](https://github.com/mirleft/nqsb.io).
 
@@ -91,7 +91,7 @@ Our full page source (CSS embedding is done via a string, no fancy types there (
 There are various ways how to embed binary data into MirageOS:
 - connect an external (FAT) disk image; upside: works for large data, independent, can be shared with other systems; downside: an extra file to distribute onto the production machine, lots of code (block storage and file system access) which can contain directory traversals and other issues
 - embed as a [special ELF section](https://github.com/mirage/mirage/issues/489); downside: not yet implemented
-- embed strings in the code; upside: no deployment hassle, works everywhere for small files; downside: need to encode binary to string chunks during build and decode in the MirageOS kernel, [it breaks with large files](https://github.com/mirage/mirage/issues/396)
+- embed strings in the code; upside: no deployment hassle, works everywhere for small files; downside: need to encode binary to string chunks during build and decode in the MirageOS unikernel, [it breaks with large files](https://github.com/mirage/mirage/issues/396)
 - likely others such as use a tar image, read it during build or runtime; wait during bootup on a network socket (or connect somewhere) to receive the static data; use a remote git repository
 
 We'll use the embedding.  There is support for this built in the mirage tool via [crunch](https://github.com/mirage/ocaml-crunch).  If you `crunch "foo"` in `config.ml`, it will create a [read-only key value store](https://github.com/mirage/mirage/blob/54736660606ca06aad1a061ac4276cc45ead1815/types/V1.mli#L931) (`KV_RO`) named `static1.ml` containing everything in the local `"foo"` directory during `mirage configure`.
@@ -124,7 +124,7 @@ let start kv =
 
 The funny `>>=` syntax notes that something is doing input/output, which might be blocking or interrupted or failing.  It composes effects using an imperative style (semicolon in other languages, another term is monadic bind).  The `Page.render` function uses the above explained `StringHtml.print` behind the scenes (which is pure, thus no `>>=`).
 
-We now have all the resources we wanted available inside our MirageOS kernel.  There is some cost during configuration (converting binary into code), and startup (concatenating lists, lookups, rendering HTML into string representation).
+We now have all the resources we wanted available inside our MirageOS unikernel.  There is some cost during configuration (converting binary into code), and startup (concatenating lists, lookups, rendering HTML into string representation).
 
 ### Building a HTTP response
 
@@ -152,7 +152,7 @@ A certificate is a token containing a public key, a name, a validity period, and
 
 The MirageOS interface for TLS is that it takes a [`FLOW`](https://github.com/mirage/mirage/blob/54736660606ca06aad1a061ac4276cc45ead1815/types/V1.mli#L108) (byte stream, e.g. TCP) and provides a `FLOW`.  Libraries can be written to be agnostic whether they use a TCP stream or a TLS session to carry data.
 
-We need to setup our kernel that on new connections to the HTTPS port, it should first do a TLS handshake, and afterwards talk the HTTP protocol.  For a TLS handshake we need to put the certificate and private key into the kernel, using yet another key value store (`crunch "tls"`).
+We need to setup our unikernel that on new connections to the HTTPS port, it should first do a TLS handshake, and afterwards talk the HTTP protocol.  For a TLS handshake we need to put the certificate and private key into the unikernel, using yet another key value store (`crunch "tls"`).
 
 On startup we read the certificate and private key, and use that to create a [TLS server config](https://mirleft.github.io/ocaml-tls/Config.html#VALserver):
 
@@ -263,7 +263,7 @@ A comparison using Firefox builtin network diagnostics shows that the waiting be
 
 We do not render HTML for each request, we do not splice data together, we *don't even read the client request*.  And I'm sure we can improve the performance even more by profiling.
 
-We saw a journey from typed XML over key value stores, HTTP, TLS, and HTTPS.  The actual application code of nqsb,io is less than 100 lines of OCaml.  We used MirageOS for our minimal HTTPS website, serving a *single resource per hostname*.  We depend (directly) on the tyxml library, the mirage tool and network stack, and the tls library.  That's it.
+We saw a journey from typed XML over key value stores, HTTP, TLS, and HTTPS.  The actual application code of our unikernel serving [nqsb,io](https://nqsb.io) is less than 100 lines of OCaml.  We used MirageOS for our minimal HTTPS website, serving a *single resource per hostname*.  We depend (directly) on the tyxml library, the mirage tool and network stack, and the tls library.  That's it.
 
 There is a long list of potential features, such as full HTTP protocol compliance (caching, favicon, ...), logging, natively getting let's encrypt certificates -- but in the web out there it is sufficient to get picked up by search engines, and the maintenance is marginal.
 
