@@ -10,7 +10,7 @@ abstract: building a simple website
 - [Canopy](https://github.com/Engil/Canopy) improvements: [no bower anymore](https://github.com/Engil/Canopy/pull/26),  [HTTP caching support (via etags)](https://github.com/Engil/Canopy/pull/27), [listings now include dates](https://github.com/Engil/Canopy/pull/31), [dates are now in big-endian (y-m-d)](https://github.com/Engil/Canopy/pull/32)
 - [MirageOS call irclog from 2014-04-20](http://canopy.mirage.io/irclogs/20-04-2016)
 - blog article about [naive authentication service using MirageOS](https://abailly.github.io/posts/mirage-os-newbie.html)
-- [really good OCaml 4.03 lwn.net post](https://lwn.net/SubscriberLink/684128/1436601f401c1f09/)
+- [OCaml 4.03 post](https://lwn.net/SubscriberLink/684128/1436601f401c1f09/)
 
 ## Task
 
