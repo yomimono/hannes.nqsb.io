@@ -148,7 +148,7 @@ We are now finished with the response side of HTTP, and can emit three different
 
 Transport layer security is a protocol on top of TCP providing an end-to-end encrypted and authenticated channel.  In our setting, our web server has a certificate and a private key to authenticate itself to the clients.
 
-A certificate is a token containing a public key, a name, a validity period, and a signature from the authority which issued the certificate (hopefully by verifying that the name is owned by the requestor).  I used [let's encrypt](https://letsencrypt.org/) (actually the [letsencrypt.sh](https://github.com/lukas2511/letsencrypt.sh/) client (would be great to have one natively in OCaml) to get a signed certificate, which is widely accepted by web browsers.
+A certificate is a token containing a public key, a name, a validity period, and a signature from the authority which issued the certificate.  The authority is crucial here: this infrastructure only works if the client trusts the public key of the authority (and thus can verify their signature on our certificate).  I used [let's encrypt](https://letsencrypt.org/) (actually the [letsencrypt.sh](https://github.com/lukas2511/letsencrypt.sh/) client (would be great to have one natively in OCaml) to get a signed certificate, which is widely accepted by web browsers.
 
 The MirageOS interface for TLS is that it takes a [`FLOW`](https://github.com/mirage/mirage/blob/54736660606ca06aad1a061ac4276cc45ead1815/types/V1.mli#L108) (byte stream, e.g. TCP) and provides a `FLOW`.  Libraries can be written to be agnostic whether they use a TCP stream or a TLS session to carry data.
 
