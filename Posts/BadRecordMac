@@ -1,0 +1,72 @@
+---
+title: Memory safety
+author: hannes
+tags: mirageos, security
+abstract: 10BTC could've been yours
+---
+
+## Updates
+
+4.03
+CVE for <=4.03
+logs integration
+mirage security advisory
+
+## BAD RECORD MAC
+
+A TLS alert if the [message authentication code](https://en.wikipedia.org/wiki/Message_authentication_code) is wrong.  From [RFC 5246](https://tools.ietf.org/html/rfc5246): This message is always fatal and should never be observed in communication between proper implementations (except when messages were corrupted in the network).
+
+Roughly 2 weeks ago I was informed that this alert pops up in their browser sometimes when they read this website.  I tried hard, but could not reproduce, but was very worried and was eager to find the root cause (some little fear remained that it was in our TLS stack).  I setup this website with some TLS-level tracing (extending the code from our [TLS handshake server](https://tls.openmirage.org)).
+
+We tried to reproduce the issue with traces and packet captures (both on client and server side) in place from our computer labs office with no success.  Later they tried from their home and after 45MB of wire data ran into this issue.  Finally, evidence.  Isolating the TCP flow with the alert resulted in just about 200KB of pcap (TLS ASCII trace around 650KB).
+
+![encrypted alert](https://www.cl.cam.ac.uk/~hm519/encrypted-alert.png)
+
+What is happening on the wire?  After some data is successfully transferred, at some point the client sends an encrypted alert (see above).  The TLS session used a RSA key exchange and I could decrypt the TLS stream with wireshark, the alert was indeed a bad record mac.  Wiresharks follow SSL stream showed all client requests, but not all server responses.  The TLS level trace from the server showed properly encrypted data.  I tried to spot the TCP payload which caused the bad record mac, starting from the alert in the client capture (the offending TCP frame should be closely before the alert).
+
+![client TCP frame](https://www.cl.cam.ac.uk/~hm519/tcp-frame-client.png)
+
+There is plaintext data which looks like a HTTP request in the TCP frame sent by the server to the client? WTF?  This should never happen!  The same TCP frame on the server side looked even more strange, it had an invalid checksum.
+
+![server TCP frame](https://www.cl.cam.ac.uk/~hm519/tcp-frame-server.png)
+
+What do we have so far?  We spotted some plaintext data in a TCP frame which is part of a TLS session.  The TCP checksum is invalid.
+
+This at least explains why we were not able to reproduce from our office:  usually, TCP frames with invalid checksums are dropped by the receiving TCP stack.  TCP is a reliabla byte stream: the sender will retransmit TCP frames which have not been acknowledget by the recipient.  Our traces are from a client behind a router doing [network address translation](https://en.wikipedia.org/wiki/Network_address_translation), which has to recompute the [TCP checksum](https://en.wikipedia.org/wiki/Transmission_Control_Protocol#Checksum_computation) because it modifies destination IP address and port.  It seems like this specific router does not validate the TCP checksum before recomputing it.
+
+Next steps are: what did the TLS layer intended to send?  Why is there a TCP frame with an invalid checksum emitted?
+
+Looking into the TLS trace, the TCP payload in question should have started with the following data:
+
+```
+0000  0B C9 E5 F3 C5 32 43 6F  53 68 ED 42 F8 67 DA 8B  .....2Co Sh.B.g..
+0010  17 87 AB EA 3F EC 99 D4  F3 38 88 E6 E3 07 D5 6E  ....?... .8.....n
+0020  94 9A 81 AF DD 76 E2 7C  6F 2A C6 98 BA 70 1A AD  .....v.| o*...p..
+0030  95 5E 13 B0 F7 A3 8C 25  6B 3D 59 CE 30 EC 56 B8  .^.....% k=Y.0.V.
+0040  0E B9 E7 20 80 FA F1 AC  78 52 66 1E F1 F8 CC 0D  ........ xRf.....
+0050  6C CD F0 0B E4 AD DA BA  40 55 D7 40 7C 56 32 EE  l....... @U.@|V2.
+0060  9D 0B A8 DE 0D 1B 0A 1F  45 F1 A8 69 3A C3 4B 47  ........ E..i:.KG
+0070  45 6D 7F A6 1D B7 0F 43  C4 D0 8C CF 52 77 9F 06  Em.....C ....Rw..
+0080  59 31 E0 9D B2 B5 34 BD  A4 4B 3F 02 2E 56 B9 A9  Y1....4. .K?..V..
+0090  95 38 FD AD 4A D6 35 E4  66 86 6E 03 AF 2C C9 00  .8..J.5. f.n..,..
+```
+
+The ethernet, IP, TCP header is in total 54 bytes, thus we have to compare starting at 0x0036 in the screenshot above.   The first 74 bytes (till 0x007F in the screenshot, 0x0049 in the text dump) are very much the same, but then they diverge (for another 700 bytes).
+
+I manually computed the TCP checksum using the TCP/IP payload from the TLS trace, and it matches the one reported as invalid.  Thus, a big relief: both the TLS nor the TCP/IP stack have used the correct data.  Our memory disclosure issue must be after the [TCP checksum is computed](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/tcp/wire.ml#L78).  After this, only the [IP frame header is filled](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/lib/ipv4.ml#L98), the [mac addresses are put](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/lib/ipv4.ml#L126) into the ethernet frame, and it is then passed to [mirage-net-xen for sending](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L538) via the Xen hypervisor.  As mentioned [earlier](https://hannes.nqsb.io/Posts/OCaml) I'm still using mirage-net-xen release 1.4.1.
+
+Communication with the Xen hypervisor is done via shared memory, allocated by mirage-net-xen, access to which is granted to the hypervisor using [Xen grant tables](http://wiki.xen.org/wiki/Grant_Table).  The TX protocol is implemented [here in mirage-net-xen](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L84-L132), which includes allocation of a [ring buffer](https://github.com/mirage/shared-memory-ring/blob/2955bf502c79bc963a02d090481b0e8958cc0c49/lwt/lwt_ring.mli), and writing requests, waiting for responses, identified using a 16bit integer.  When a response is polled from dom0, the respective page is returned into the pool of [shared pages](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L134-L213), to be reused by the next packet to be transmitted.
+
+Actually, instead of a whole page (4096 byte) per request/response, each page is [split into two blocks](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L194-L198) (since the most common [MTU](https://en.wikipedia.org/wiki/Maximum_transmission_unit) for ethernet is 1500 bytes).  The [identifier in use](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L489-L490) is the grant reference, which might be unique per page, but not per block.
+
+Thus, when two blocks are requested to be sent, the first [polled response](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L398) will immediately [release](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L182-L185) both into the list of free blocks.  When another packet is send, the block still waiting to be sent in the ringbuffer can be reused.  This leads to corrupt data being sent.
+
+The fix was already applied [back in December](https://github.com/mirage/mirage-net-xen/commit/47de2edfad9c56110d98d0312c1a7e0b9dcc8fbf) to the master branch of mirage-net-xen, and has now been [backported to the 1.4 branch](https://github.com/mirage/mirage-net-xen/pull/40/commits/ec9b1046b75cba5ae3473b2d3b223c3d1284489d).  In addition, a patch to [avoid collisions on the receiving side](https://github.com/mirage/mirage-net-xen/commit/0b1e53c0875062a50e2d5823b7da0d8e0a64dc37) has been applied to both branches (and released in versions 1.4.2 resp. 1.6.1).
+
+What can we learn from this?  Read the interface documentation (if there is any), make sure unique identifiers are really unique.  Think about the lifecycle of pieces of memory.
+
+We have seen data which was supposed to be sent to the logging host in a TLS encrypted stream.  This is actually the same code used in the [Piñata](http://ownme.ipredator.se) for logging, thus it might have been yours (I tried hard, but couldn't get the Piñata to leak data).
+
+
+---
+"the first successful response will mark all pages with this identifier free" i didn't exactly understand this, but it's not essential to understand the security problem -- oh, "mark it free" that's fine, i read it as "tree" the first time
