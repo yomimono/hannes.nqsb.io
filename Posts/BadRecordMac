@@ -1,5 +1,5 @@
 ---
-title: Memory safety
+title: Catch the bug (through the stack)
 author: hannes
 tags: mirageos, security
 abstract: 10BTC could've been yours
@@ -7,10 +7,10 @@ abstract: 10BTC could've been yours
 
 ## Updates
 
-4.03
-CVE for <=4.03
-logs integration
-mirage security advisory
+- Canopy uses a [map instead of a hashtable](https://github.com/Engil/Canopy/issues/30#issuecomment-215010365), [tags](https://hannes.nqsb.io/tags) now contains a list of tags ([PR here](https://github.com/Engil/Canopy/pull/39)), both thanks to voila!  I also use the [new CSS](https://github.com/Engil/Canopy/pull/38) from Engil
+- There is a [CVE for OCaml <=4.03](http://www.openwall.com/lists/oss-security/2016/04/29/1)
+- [Mirage 2.9.0](https://github.com/mirage/mirage/pull/534) was released, which integrates support of the logs library
+- This blog post has an accompanied [MirageOS security advisory](https://mirage.io/blog/MSA00)
 
 ## BAD RECORD MAC
 
@@ -52,9 +52,11 @@ Looking into the TLS trace, the TCP payload in question should have started with
 The ethernet, IP, and TCP headers are in total 54 bytes, thus we have to compare starting at 0x0036 in the screenshot above.   The first 74 bytes (till 0x007F in the screenshot, 0x0049 in the text dump) are very much the same, but then they diverge (for another 700 bytes).
 
 I manually computed the TCP checksum using the TCP/IP payload from the TLS trace, and it matches the one reported as invalid.  Thus, a big relief: both the TLS nor the TCP/IP stack have used the correct data.  Our memory disclosure issue must be after the [TCP checksum is computed](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/tcp/wire.ml#L78).  After this: 
-* the [IP frame header is filled](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/lib/ipv4.ml#L98
+* the [IP frame header is filled](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/lib/ipv4.ml#L98)
 * the [mac addresses are put](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/lib/ipv4.ml#L126) into the ethernet frame
-* the frame is then passed to [mirage-net-xen for sending](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L538) via the Xen hypervisor.  (As mentioned [earlier](https://hannes.nqsb.io/Posts/OCaml) I'm still using mirage-net-xen release 1.4.1.)
+* the frame is then passed to [mirage-net-xen for sending](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L538) via the Xen hypervisor.
+
+As mentioned [earlier](https://hannes.nqsb.io/Posts/OCaml) I'm still using mirage-net-xen release 1.4.1.
 
 Communication with the Xen hypervisor is done via shared memory.  The memory is allocated by mirage-net-xen, which then grants access to the hypervisor using [Xen grant tables](http://wiki.xen.org/wiki/Grant_Table).  The TX protocol is implemented [here in mirage-net-xen](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L84-L132), which includes allocation of a [ring buffer](https://github.com/mirage/shared-memory-ring/blob/2955bf502c79bc963a02d090481b0e8958cc0c49/lwt/lwt_ring.mli).  The TX protocol also has implementations for writing requests and waiting for responses, both of which are identified using a 16bit integer.  When a response has arrived from the hypervisor, the respective page is returned into the pool of [shared pages](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L134-L213), to be reused by the next packet to be transmitted.
 
@@ -62,12 +64,12 @@ Instead of a whole page (4096 byte) per request/response, each page is [split in
 
 Thus, when two blocks are requested to be sent, the first [polled response](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L398) will immediately [release](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L182-L185) both into the list of free blocks.  When another packet is send, the block still waiting to be sent in the ringbuffer can be reused.  This leads to corrupt data being sent.
 
-The fix was already applied [back in December](https://github.com/mirage/mirage-net-xen/commit/47de2edfad9c56110d98d0312c1a7e0b9dcc8fbf) to the master branch of mirage-net-xen, and has now been [backported to the 1.4 branch](https://github.com/mirage/mirage-net-xen/pull/40/commits/ec9b1046b75cba5ae3473b2d3b223c3d1284489d).  In addition, a patch to [avoid collisions on the receiving side](https://github.com/mirage/mirage-net-xen/commit/0b1e53c0875062a50e2d5823b7da0d8e0a64dc37) has been applied to both branches (and released in versions 1.4.2 resp. 1.6.1).
+The fix was already done [back in December](https://github.com/mirage/mirage-net-xen/commit/47de2edfad9c56110d98d0312c1a7e0b9dcc8fbf) to the master branch of mirage-net-xen, and has now been [backported to the 1.4 branch](https://github.com/mirage/mirage-net-xen/pull/40/commits/ec9b1046b75cba5ae3473b2d3b223c3d1284489d).  In addition, a patch to [avoid collisions on the receiving side](https://github.com/mirage/mirage-net-xen/commit/0b1e53c0875062a50e2d5823b7da0d8e0a64dc37) has been applied to both branches (and released in versions 1.4.2 resp. 1.6.1).
 
-What can we learn from this?  Read the interface documentation (if there is any), and make sure unique identifiers are really unique.  Think about the lifecycle of pieces of memory.
+What can we learn from this?  Read the interface documentation (if there is any), and make sure unique identifiers are really unique.  Think about the lifecycle of pieces of memory.  Investigation of high level bugs pays off, you might find some subtle error on a different layer.  There is no perfect security, and code only gets better if more people read and understand it.
 
-We have seen plain data in a TLS encrypted stream.  The plain data was intended to be sent to the dom0 for logging access to the webserver.  The [same code](https://github.com/mirleft/btc-pinata/blob/master/logger.ml) is used used in our [Piñata](http://ownme.ipredator.se), thus it might have been yours (although I tried hard and couldn't get the Piñata to leak data).
+The issue was in mirage-net-xen since its initial release, but only occured under load, and thanks to reliable protocols, was silently discarded (an invalid TCP checksum leads to a dropped frame and retransmission of its payload).
 
+We have seen plain data in a TLS encrypted stream.  The plain data was intended to be sent to the dom0 for logging access to the webserver.  The [same code](https://github.com/mirleft/btc-pinata/blob/master/logger.ml) is used used in our [Piñata](http://ownme.ipredator.se), thus it could have been yours (although I tried hard and couldn't get the Piñata to leak data).
 
----
-"the first successful response will mark all pages with this identifier free" i didn't exactly understand this, but it's not essential to understand the security problem -- oh, "mark it free" that's fine, i read it as "tree" the first time
+Certainly, interfacing the outside world is complex.  The [mirage-block-xen](https://github.com/mirage/mirage-block-xen) library uses a similar protocol to access block devices.  From a brief look, that library seems to be safe (using 64bit identifiers).
