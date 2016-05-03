@@ -11,6 +11,7 @@ abstract: 10BTC could've been yours
 - There is a [CVE for OCaml <=4.03](http://www.openwall.com/lists/oss-security/2016/04/29/1)
 - [Mirage 2.9.0](https://github.com/mirage/mirage/pull/534) was released, which integrates support of the logs library
 - This blog post has an accompanied [MirageOS security advisory](https://mirage.io/blog/MSA00)
+- cfcs documented some [basic unikernels](https://github.com/cfcs/mirage-examples)
 
 ## BAD RECORD MAC
 
@@ -73,3 +74,7 @@ The issue was in mirage-net-xen since its initial release, but only occured unde
 We have seen plain data in a TLS encrypted stream.  The plain data was intended to be sent to the dom0 for logging access to the webserver.  The [same code](https://github.com/mirleft/btc-pinata/blob/master/logger.ml) is used used in our [Piñata](http://ownme.ipredator.se), thus it could have been yours (although I tried hard and couldn't get the Piñata to leak data).
 
 Certainly, interfacing the outside world is complex.  The [mirage-block-xen](https://github.com/mirage/mirage-block-xen) library uses a similar protocol to access block devices.  From a brief look, that library seems to be safe (using 64bit identifiers).
+
+I'm interested in feedback, either via
+[twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
+GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
