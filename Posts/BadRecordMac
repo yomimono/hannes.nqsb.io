@@ -52,7 +52,7 @@ Looking into the TLS trace, the TCP payload in question should have started with
 
 The ethernet, IP, and TCP headers are in total 54 bytes, thus we have to compare starting at 0x0036 in the screenshot above.   The first 74 bytes (till 0x007F in the screenshot, 0x0049 in the text dump) are very much the same, but then they diverge (for another 700 bytes).
 
-I manually computed the TCP checksum using the TCP/IP payload from the TLS trace, and it matches the one reported as invalid.  Thus, a big relief: both the TLS nor the TCP/IP stack have used the correct data.  Our memory disclosure issue must be after the [TCP checksum is computed](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/tcp/wire.ml#L78).  After this: 
+I manually computed the TCP checksum using the TCP/IP payload from the TLS trace, and it matches the one reported as invalid.  Thus, a big relief: both the TLS and the TCP/IP stack have used the correct data.  Our memory disclosure issue must be after the [TCP checksum is computed](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/tcp/wire.ml#L78).  After this: 
 * the [IP frame header is filled](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/lib/ipv4.ml#L98)
 * the [mac addresses are put](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/lib/ipv4.ml#L126) into the ethernet frame
 * the frame is then passed to [mirage-net-xen for sending](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L538) via the Xen hypervisor.
@@ -71,7 +71,7 @@ What can we learn from this?  Read the interface documentation (if there is any)
 
 The issue was in mirage-net-xen since its initial release, but only occured under load, and thanks to reliable protocols, was silently discarded (an invalid TCP checksum leads to a dropped frame and retransmission of its payload).
 
-We have seen plain data in a TLS encrypted stream.  The plain data was intended to be sent to the dom0 for logging access to the webserver.  The [same code](https://github.com/mirleft/btc-pinata/blob/master/logger.ml) is used used in our [Piñata](http://ownme.ipredator.se), thus it could have been yours (although I tried hard and couldn't get the Piñata to leak data).
+We have seen plain data in a TLS encrypted stream.  The plain data was intended to be sent to the dom0 for logging access to the webserver.  The [same code](https://github.com/mirleft/btc-pinata/blob/master/logger.ml) is used in our [Piñata](http://ownme.ipredator.se), thus it could have been yours (although I tried hard and couldn't get the Piñata to leak data).
 
 Certainly, interfacing the outside world is complex.  The [mirage-block-xen](https://github.com/mirage/mirage-block-xen) library uses a similar protocol to access block devices.  From a brief look, that library seems to be safe (using 64bit identifiers).
 
