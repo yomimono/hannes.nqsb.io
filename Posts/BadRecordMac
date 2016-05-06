@@ -21,7 +21,7 @@ I tried hard, but could not reproduce, but was very worried and was eager to fin
 
 ![encrypted alert](https://www.cl.cam.ac.uk/~hm519/encrypted-alert.png)
 
-What is happening on the wire?  After some data is successfully transferred, at some point the client sends an encrypted alert (see above).  The TLS session used a RSA key exchange and I could decrypt the TLS stream with wireshark, which revealed that the alert was indeed a bad record MAC.  Wireshark's "follow SSL stream" showed all client requests, but not all server responses.  The TLS level trace from the server showed properly encrypted data.  I tried to spot the TCP payload which caused the bad record MAC, starting from the alert in the client capture (the offending TCP frame should be closely before the alert).
+What is happening on the wire?  After some data is successfully transferred, at some point the client sends an encrypted alert (see above).  The TLS session used a RSA key exchange and I could decrypt the TLS stream with Wireshark, which revealed that the alert was indeed a bad record MAC.  Wireshark's "follow SSL stream" showed all client requests, but not all server responses.  The TLS level trace from the server showed properly encrypted data.  I tried to spot the TCP payload which caused the bad record MAC, starting from the alert in the client capture (the offending TCP frame should be closely before the alert).
 
 ![client TCP frame](https://www.cl.cam.ac.uk/~hm519/tcp-frame-client.png)
 
@@ -52,7 +52,7 @@ Looking into the TLS trace, the TCP payload in question should have started with
 
 The ethernet, IP, and TCP headers are in total 54 bytes, thus we have to compare starting at 0x0036 in the screenshot above.   The first 74 bytes (till 0x007F in the screenshot, 0x0049 in the text dump) are very much the same, but then they diverge (for another 700 bytes).
 
-I manually computed the TCP checksum using the TCP/IP payload from the TLS trace, and it matches the one reported as invalid.  Thus, a big relief: both the TLS and the TCP/IP stack have used the correct data.  Our memory disclosure issue must be after the [TCP checksum is computed](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/tcp/wire.ml#L78).  After this: 
+I manually computed the TCP checksum using the TCP/IP payload from the TLS trace, and it matches the one reported as invalid.  Thus, a big relief: both the TLS and the TCP/IP stack have used the correct data.  Our memory disclosure issue must be after the [TCP checksum is computed](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/tcp/wire.ml#L78).  After this:
 * the [IP frame header is filled](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/lib/ipv4.ml#L98)
 * the [mac addresses are put](https://github.com/mirage/mirage-tcpip/blob/1617953b4674c9c832786c1ab3236b91d00f5c25/lib/ipv4.ml#L126) into the ethernet frame
 * the frame is then passed to [mirage-net-xen for sending](https://github.com/mirage/mirage-net-xen/blob/541e86f53cb8cf426aabdd7f090779fc5ea9fe93/lib/netif.ml#L538) via the Xen hypervisor.
