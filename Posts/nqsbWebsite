@@ -40,6 +40,8 @@ From the [tyxml description](http://ocsigen.org/tyxml/): "Tyxml provides a set o
 
 You can plug elements (or attributes) inside each other only if the HTML specification allows this (no `<body>` inside of a `<body>`).  An example that can be rendered to a `div` with `pcdata` inside.
 
+If you use `utop` (as interactive read-eval-print-loop), you first need to load tyxml by `#require "tyxml"`.
+
 ```OCaml
 open Html5.M
 
@@ -48,26 +50,11 @@ let mycontent =
     [ pcdata "This is a fabulous content." ]
 ```
 
-In the end, our web server will deliver the page as a string, thus we need some boilerplate (I copied this from Canopy, there might be another way to achieve it) to transform `mycontent` into a string:
+In the end, our web server will deliver the page as a string, tyxml provides the function `Html5.P.print : output:(string -> unit) -> doc -> unit`.  We use a temporary `Buffer` to print the document into.
 
 ```OCaml
-module StringPrinter = struct
-    type out = string
-    type m = string
-
-    let empty = ""
-    let concat = (^)
-    let put a = a
-    let make a = a
-end
-
-module StringHtml = Html5.Make_printer(StringPrinter)
-```
-
-The `StringHtml` module contains a function `val print : doc -> bytes`.  We can try it on our example:
-
-```OCaml
-# StringHtml.print mycontent
+# let buf = Buffer.create 100
+# Html5.P.print ~output:(Buffer.add_string buf) mycontent
 
 Error: This expression has type ([> Html5_types.div ] as 'a) elt but an expression was expected of type doc = [ `Html ] elt Type 'a = [> `Div ] is not compatible with type [ `Html ]
 The second variant type does not allow tag(s) `Div
@@ -78,13 +65,24 @@ This is pretty nice, we can only print complete HTML5 documents this way (there 
 To get it up and running, we wrap it inside of a `html` which has a `header` and a `body`:
 
 ```OCaml
-# StringHtml.print (html (head (title (pcdata "title")) []) (body [ mycontent ]))
+# Html5.P.print ~output:(Buffer.add_string buf) (html (head (title (pcdata "title")) []) (body [ mycontent ]))
+# Buffer.contents buf
 
 "<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>title</title></head><body><div class=\"content\">This is a fabulous content.</div></body></html>"
 ```
 
 The HTML content is done (in a pure way, no effects!), let's work on the binary pdfs.
-Our full page source (CSS embedding is done via a string, no fancy types there (yet!?)) is [on GitHub](https://github.com/mirleft/nqsb.io/blob/master/page.ml).
+Our full page source (CSS embedding is done via a string, no fancy types there (yet!?)) is [on GitHub](https://github.com/mirleft/nqsb.io/blob/master/page.ml).  Below we will use the `render` function for our content:
+
+```OCaml
+let render =
+  let buf = Buffer.create 500 in
+  Html5.P.print ~output:(Buffer.add_string buf) @@
+  html
+    (header "not quite so broken")
+    (body [ mycontent ]) ;
+  Cstruct.of_string @@ Buffer.contents buf
+```
 
 ### Binary data
 
@@ -122,7 +120,7 @@ let start kv =
   ...
 ```
 
-The funny `>>=` syntax notes that something is doing input/output, which might be blocking or interrupted or failing.  It composes effects using an imperative style (semicolon in other languages, another term is monadic bind).  The `Page.render` function uses the above explained `StringHtml.print` behind the scenes (which is pure, thus no `>>=`).
+The funny `>>=` syntax notes that something is doing input/output, which might be blocking or interrupted or failing.  It composes effects using an imperative style (semicolon in other languages, another term is monadic bind).  The `Page.render` function is described above, and is pure, thus no `>>=`.
 
 We now have all the resources we wanted available inside our MirageOS unikernel.  There is some cost during configuration (converting binary into code), and startup (concatenating lists, lookups, rendering HTML into string representation).
 
