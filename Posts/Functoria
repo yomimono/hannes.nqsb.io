@@ -10,7 +10,7 @@ abstract: how to actually configure the system
 - now using Html5.P.print instead of string concatenation, as suggested by Drup (both on [nqsb.io](https://github.com/mirleft/nqsb.io/commit/f16291b67d203bf6b2ebc0c5c8479b7cfd153683) and in [Canopy](https://github.com/Engil/Canopy/pull/46))
 - Canopy updated and created timestamps (for [irmin-0.10](https://github.com/Engil/Canopy/pull/48) and [irmin-0.11](https://github.com/Engil/Canopy/pull/43))
 - another [resource leak in mirage-http](https://github.com/mirage/mirage-http/pull/24)
-- [mirage-platform now has 4.03 support](https://github.com/mirage/mirage-platform/pull/165) and [`strtod`](https://github.com/mirage/mirage-platform/issues/118) (finally :)
+- [mirage-platform now has 4.03 support](https://github.com/mirage/mirage-platform/pull/165) and [strtod](https://github.com/mirage/mirage-platform/issues/118) (finally :)
 - [blog posts about retreat in marrakech](https://mirage.io/blog/2016-spring-hackathon)
 - [syndic 1.5.0 release](https://github.com/Cumulus/Syndic) now using ptime instead of calendar
 
@@ -38,7 +38,7 @@ let start stack _ =
   S.listen stack
 ```
 
-Where `S` is a [`V1_LWT.STACKV4`](https://github.com/mirage/mirage/blob/355edc987135aff640b240594ae4af31815922e5/types/V1.mli#L668-L765), a complete TCP/IP stack for IPv4.  The functions we are using are [`listen_tcpv4`](https://github.com/mirage/mirage/blob/355edc987135aff640b240594ae4af31815922e5/types/V1.mli#L754-L759), which needs a `stack`, `port` and a `callback` (and should be called `register_tcp_callback`), and [`listen`](https://github.com/mirage/mirage/blob/355edc987135aff640b240594ae4af31815922e5/types/V1.mli#L761-L764) which polls for incoming frames.
+Where `S` is a [V1_LWT.STACKV4](https://github.com/mirage/mirage/blob/355edc987135aff640b240594ae4af31815922e5/types/V1.mli#L668-L765), a complete TCP/IP stack for IPv4.  The functions we are using are [listen_tcpv4](https://github.com/mirage/mirage/blob/355edc987135aff640b240594ae4af31815922e5/types/V1.mli#L754-L759), which needs a `stack`, `port` and a `callback` (and should be called `register_tcp_callback`), and [listen](https://github.com/mirage/mirage/blob/355edc987135aff640b240594ae4af31815922e5/types/V1.mli#L761-L764) which polls for incoming frames.
 
 Our callback is `serve rendered`, where `serve` is defined as:
 
@@ -81,7 +81,7 @@ let rendered =
 
 This puts together the pieces we need for a simple HTML site.  This unikernel does not have any external dependencies, if we assume that the mirage toolchain, the types, and the network implementation are already provided (the latter two are implicitly added by the mirage tool depending on the configuration, the first you'll have to install manually `opam install mirage`).
 
-But wait, where do `Style` and `Content` come from?  There are no `ml` modules in the repository.  Instead, there is a [`content.md`](https://github.com/mirage/marrakech2016/blob/master/data/content.md) and [`style.css`](https://github.com/mirage/marrakech2016/blob/master/data/style.css) in the `data` subdirectory.
+But wait, where do `Style` and `Content` come from?  There are no `ml` modules in the repository.  Instead, there is a [content.md](https://github.com/mirage/marrakech2016/blob/master/data/content.md) and [style.css](https://github.com/mirage/marrakech2016/blob/master/data/style.css) in the `data` subdirectory.
 
 ### Configuration
 
@@ -100,7 +100,7 @@ let () =
   ]
 ```
 
-The function [`register`](https://mirage.github.io/mirage/Mirage.html#VALregister) is provided by the mirage tool, it will execute the list of jobs using the given name.  To construct a `job`, we use the [`foreign`](https://mirage.github.io/functoria/Functoria.html#VALforeign) combinator, which might have dependencies (here, a list with the single element `config_shell` explained later, using the [`abstract`](https://mirage.github.io/functoria/Functoria_key.html#VALabstract) combinator), the name of the main function (`Unikernel.main`), a [`typ`](https://mirage.github.io/functoria/Functoria.html#TYPEtyp) (here constructed using the [`@->`](https://mirage.github.io/functoria/Functoria.html#VAL%28@-%3E%29) combinator, from a [`stackv4`](https://mirage.github.io/mirage/Mirage.html#TYPEstackv4) to a [`job`](https://mirage.github.io/functoria/Functoria.html#TYPEjob)), and this applied (using the [`$`](https://mirage.github.io/functoria/Functoria.html#VAL%28$%29) combinator) to the `net` (an actual implementation of `stackv4`).
+The function [register](https://mirage.github.io/mirage/Mirage.html#VALregister) is provided by the mirage tool, it will execute the list of jobs using the given name.  To construct a `job`, we use the [foreign](https://mirage.github.io/functoria/Functoria.html#VALforeign) combinator, which might have dependencies (here, a list with the single element `config_shell` explained later, using the [abstract](https://mirage.github.io/functoria/Functoria_key.html#VALabstract) combinator), the name of the main function (`Unikernel.main`), a [typ](https://mirage.github.io/functoria/Functoria.html#TYPEtyp) (here constructed using the [@->](https://mirage.github.io/functoria/Functoria.html#VAL%28@-%3E%29) combinator, from a [stackv4](https://mirage.github.io/mirage/Mirage.html#TYPEstackv4) to a [job](https://mirage.github.io/functoria/Functoria.html#TYPEjob)), and this applied (using the [$](https://mirage.github.io/functoria/Functoria.html#VAL%28$%29) combinator) to the `net` (an actual implementation of `stackv4`).
 
 The `net` implementation is as following:
 
@@ -117,7 +117,7 @@ let net =
     (socket_stackv4 default_console [Ipaddr.V4.any])
 ```
 
-Depending on whether we're running on unix or xen, either a socket stack (for testing) or the concrete IP configuration for deployment (using [`if_impl`](https://mirage.github.io/functoria/Functoria.html#VALif_impl) and [`is_xen`](https://mirage.github.io/mirage/Mirage_key.html#VALis_xen) from our DSLs).
+Depending on whether we're running on unix or xen, either a socket stack (for testing) or the concrete IP configuration for deployment (using [if_impl](https://mirage.github.io/functoria/Functoria.html#VALif_impl) and [is_xen](https://mirage.github.io/mirage/Mirage_key.html#VALis_xen) from our DSLs).
 
 So far nothing too surprising, only some combinators of the functoria DSL which let us describe the possible configuration options.
 
@@ -148,7 +148,7 @@ let config_shell = impl @@ object
 end
 ```
 
-Functoria uses classes internally, and we extend the [`base_configurable`](https://mirage.github.io/functoria/Functoria.base_configurable-c.html) class, which extends [`configurable`](https://mirage.github.io/functoria/Functoria.configurable-c.html) with some sensible defaults.
+Functoria uses classes internally, and we extend the [base_configurable](https://mirage.github.io/functoria/Functoria.base_configurable-c.html) class, which extends [configurable](https://mirage.github.io/functoria/Functoria.configurable-c.html) with some sensible defaults.
 
 The important bits are what actually happens during `configure` and `clean`: execution of some shell commands (`echo`, `omd`, and `rm`) using the [functoria application builder](https://mirage.github.io/functoria/Functoria_app.html) interface.  Some information is as well exposed via the [Functoria_info](https://mirage.github.io/functoria/Functoria_info.html) module.
 
