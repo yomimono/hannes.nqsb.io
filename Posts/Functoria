@@ -1,0 +1,162 @@
+---
+title: Configuration DSL step-by-step
+author: hannes
+tags: mirageos, background
+abstract: how to actually configure the system
+---
+
+## Updates
+
+- now using Html5.P.print instead of string concatenation, as suggested by Drup (both on [nqsb.io](https://github.com/mirleft/nqsb.io/commit/f16291b67d203bf6b2ebc0c5c8479b7cfd153683) and in [Canopy](https://github.com/Engil/Canopy/pull/46))
+- Canopy updated and created timestamps (for [irmin-0.10](https://github.com/Engil/Canopy/pull/48) and [irmin-0.11](https://github.com/Engil/Canopy/pull/43))
+- another [resource leak in mirage-http](https://github.com/mirage/mirage-http/pull/24)
+- [mirage-platform now has 4.03 support](https://github.com/mirage/mirage-platform/pull/165) and [`strtod`](https://github.com/mirage/mirage-platform/issues/118) (finally :)
+- [blog posts about retreat in marrakech](https://mirage.io/blog/2016-spring-hackathon)
+- [syndic 1.5.0 release](https://github.com/Cumulus/Syndic) now using ptime instead of calendar
+
+Sorry for being late again with this article, I had other ones planned, but am not yet satisfied with content and code, will have to wait another week.
+
+## MirageOS configuration
+
+As described in an [earlier post](/Posts/OperatingSystem), MirageOS is a library operating system which generates single address space custom kernels (so called unikernels) for each application.  The application code is (mostly) independent on the used backend.  To achieve this, the language which expresses the configuration of a MirageOS unikernel is rather complex, and has to deal with package dependencies, setup of layers (network stack starting at the (virtual) ethernet device, or sockets), logging, tracing.
+
+The abstraction over concrete implementation of e.g. the network stack is done by providing a module signature in the [mirage-types](https://github.com/mirage/mirage/tree/master/types) package.  The socket-based network stack, the tap device based network stack, and the Xen virtual network device based network stack implement this signature (depending on other module signatures).  The unikernel contains code which applies those dependent modules to instantiate a custom-tailored network stack for the specific configuration.  A developer should only describe what their requirements are, the user who wants to deploy it should provide the concrete configuration.  And the developer should not need to manually instantiate the network stack for all possible configurations, this is what the mirage tool should embed.
+
+Initially, MirageOS contained an adhoc system which relied on concatenation of strings representing OCaml code.  This turned out to be error prone.  In 2015 [Drup](https://github.com/Drup) developed [Functoria](https://github.com/mirage/functoria), a domain-specific language (DSL) to organize functor applications, primarily for MirageOS.  It has been introduced in [a blog post](https://mirage.io/blog/introducing-functoria).  It is not limited to MirageOS (although this is the primary user right now).
+
+Functoria has been included in MirageOS since its [2.7.0 release](https://github.com/mirage/mirage/releases/tag/v2.7.0) at the end of February 2016.  Functoria provides support for command line arguments which can then either be passed at configuration time or at boot time to the unikernel (such as IP address configuration) using the [cmdliner library](http://erratique.ch/software/cmdliner) underneath (and includes dynamic man pages, help, sensible command line parsing, and even visualisation (`mirage describe`) of the configuration and data dependencies).
+
+I won't go into details about command line arguments in here, please have a look at the [functoria blog post](https://mirage.io/blog/introducing-functoria) in case you're interested.  Instead, I'll describe how to define a Functoria device which inserts content as code at configuration time into a MirageOS unikernel ([running here](http://marrakech2016.mirage.io), [source](https://github.com/mirage/marrakech2016)).  Using this approach, no external data (using crunch or a file system image) is needed, while the content can still be modified using markdown.  Also, no markdown to HTML converter is needed at runtime, but this step is completely done at compile time (the result is a small (still too large) unikernel, 4.6MB).
+
+### Unikernel
+
+Similar to [my nqsb.io website post](/Posts/nqsbWebsite), this unikernel only has a single resource and thus does not need to do any parsing (or even call `read`).  The main function is `start`:
+
+```OCaml
+let start stack _ =
+  S.listen_tcpv4 stack ~port:80 (serve rendered) ;
+  S.listen stack
+```
+
+Where `S` is a [`V1_LWT.STACKV4`](https://github.com/mirage/mirage/blob/355edc987135aff640b240594ae4af31815922e5/types/V1.mli#L668-L765), a complete TCP/IP stack for IPv4.  The functions we are using are [`listen_tcpv4`](https://github.com/mirage/mirage/blob/355edc987135aff640b240594ae4af31815922e5/types/V1.mli#L754-L759), which needs a `stack`, `port` and a `callback` (and should be called `register_tcp_callback`), and [`listen`](https://github.com/mirage/mirage/blob/355edc987135aff640b240594ae4af31815922e5/types/V1.mli#L761-L764) which polls for incoming frames.
+
+Our callback is `serve rendered`, where `serve` is defined as:
+
+```OCaml
+let serve data tcp =
+  TCP.writev tcp [ header; data ] >>= fun _ ->
+  TCP.close tcp
+```
+
+Upon an incoming TCP connection, the list consisting of `header ; data` is written to the connection, which is subsequently closed.
+
+The function `header` is very similar to our previous one, splicing a proper HTTP header together:
+
+```OCaml
+let http_header ~status xs =
+  let headers = List.map (fun (k, v) -> k ^ ": " ^ v) xs in
+  let lines   = status :: headers @ [ "\r\n" ] in
+  Cstruct.of_string (String.concat "\r\n" lines)
+
+let header = http_header
+    ~status:"HTTP/1.1 200 OK"
+    [ ("Content-Type", "text/html; charset=UTF-8") ;
+      ("Connection", "close") ]
+```
+
+And the `rendered` function consists of some hardcoded HTML, and references to two other modules, `Style.data` and `Content.data`:
+
+```OCaml
+let rendered =
+  Cstruct.of_string
+    (String.concat "" [
+        "<html><head>" ;
+        "<title>1st MirageOS hackathon: 11-16th March 2016, Marrakech, Morocco</title>" ;
+        "<style>" ; Style.data ; "</style>" ;
+        "</head>" ;
+        "<body><div id=\"content\">" ;
+        Content.data ;
+        "</div></body></html>" ])
+```
+
+This puts together the pieces we need for a simple HTML site.  This unikernel does not have any external dependencies, if we assume that the mirage toolchain, the types, and the network implementation are already provided (the latter two are implicitly added by the mirage tool depending on the configuration, the first you'll have to install manually `opam install mirage`).
+
+But wait, where do `Style` and `Content` come from?  There are no `ml` modules in the repository.  Instead, there is a [`content.md`](https://github.com/mirage/marrakech2016/blob/master/data/content.md) and [`style.css`](https://github.com/mirage/marrakech2016/blob/master/data/style.css) in the `data` subdirectory.
+
+### Configuration
+
+We use the builtin configuration time magic of functoria to translate these into OCaml modules, in such a way that our unikernel does not need to embed code to render markdown to HTML and carry along a markdown data file.
+
+Inside of `config.ml`, let's look again at the bottom:
+
+```OCaml
+let () =
+  register "marrakech2016" [
+    foreign
+      ~deps:[abstract config_shell]
+      "Unikernel.Main"
+      ( stackv4 @-> job )
+      $ net
+  ]
+```
+
+The function [`register`](https://mirage.github.io/mirage/Mirage.html#VALregister) is provided by the mirage tool, it will execute the list of jobs using the given name.  To construct a `job`, we use the [`foreign`](https://mirage.github.io/functoria/Functoria.html#VALforeign) combinator, which might have dependencies (here, a list with the single element `config_shell` explained later, using the [`abstract`](https://mirage.github.io/functoria/Functoria_key.html#VALabstract) combinator), the name of the main function (`Unikernel.main`), a [`typ`](https://mirage.github.io/functoria/Functoria.html#TYPEtyp) (here constructed using the [`@->`](https://mirage.github.io/functoria/Functoria.html#VAL%28@-%3E%29) combinator, from a [`stackv4`](https://mirage.github.io/mirage/Mirage.html#TYPEstackv4) to a [`job`](https://mirage.github.io/functoria/Functoria.html#TYPEjob)), and this applied (using the [`$`](https://mirage.github.io/functoria/Functoria.html#VAL%28$%29) combinator) to the `net` (an actual implementation of `stackv4`).
+
+The `net` implementation is as following:
+
+```OCaml
+let address addr nm gw =
+  let f = Ipaddr.V4.of_string_exn in
+  { address = f addr ; netmask = f nm ; gateways = [f gw] }
+
+let server = address "198.167.222.204" "255.255.255.0" "198.167.222.1"
+
+let net =
+  if_impl Key.is_xen
+    (direct_stackv4_with_static_ipv4 default_console tap0 server)
+    (socket_stackv4 default_console [Ipaddr.V4.any])
+```
+
+Depending on whether we're running on unix or xen, either a socket stack (for testing) or the concrete IP configuration for deployment (using [`if_impl`](https://mirage.github.io/functoria/Functoria.html#VALif_impl) and [`is_xen`](https://mirage.github.io/mirage/Mirage_key.html#VALis_xen) from our DSLs).
+
+So far nothing too surprising, only some combinators of the functoria DSL which let us describe the possible configuration options.
+
+Let us look into `config_shell`, which embeds the markdown and CSS into OCaml modules at configuration time:
+
+```OCaml
+type sh = ShellConfig
+
+let config_shell = impl @@ object
+    inherit base_configurable
+
+    method configure i =
+      let open Functoria_app.Cmd in
+      let (>>=) = Rresult.(>>=) in
+      let dir = Info.root i in
+      run "echo 'let data = {___|' > style.ml" >>= fun () ->
+      run "cat data/style.css >> style.ml" >>= fun () ->
+      run "echo '|___}' >> style.ml" >>= fun () ->
+      run "echo 'let data = {___|' > content.ml" >>= fun () ->
+      run "omd data/content.md >> content.ml" >>= fun () ->
+      run "echo '|___}' >> content.ml"
+
+    method clean i = Functoria_app.Cmd.run "rm -f style.ml content.ml"
+
+    method module_name = "Functoria_runtime"
+    method name = "shell_config"
+    method ty = Type ShellConfig
+end
+```
+
+Functoria uses classes internally, and we extend the [`base_configurable`](https://mirage.github.io/functoria/Functoria.base_configurable-c.html) class, which extends [`configurable`](https://mirage.github.io/functoria/Functoria.configurable-c.html) with some sensible defaults.
+
+The important bits are what actually happens during `configure` and `clean`: execution of some shell commands (`echo`, `omd`, and `rm`) using the [functoria application builder](https://mirage.github.io/functoria/Functoria_app.html) interface.  Some information is as well exposed via the [Functoria_info](https://mirage.github.io/functoria/Functoria_info.html) module.
+
+
+### Wrapup
+
+We walked through the configuration magic of MirageOS, which is a domain-specific language designed for MirageOS demands.  We can run arbitrary commands at compile time, and do not need to escape into external files, such as Makefile or shell scripts, but can embed them in our `config.ml`.
+
+I'm interested in feedback, either via
+[twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
+GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
