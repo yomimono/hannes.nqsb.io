@@ -1,0 +1,105 @@
+---
+title: Counting Bytes
+author: hannes
+tags: mirageos, background
+abstract: looking into dependencies and their sizes
+---
+
+I was busy writing code, text, talks, and also spend a week without Internet, where I ground and brewed 15kg espresso.
+
+## Size of a MrageOS unikernel
+
+There have been lots of claims and myths around the concrete size of MirageOS unikernels.  In this article I'll apply some measurements which overapproximate the binary sizes.  The tools used for the visualisations are available online, and soon hopefully upstreamed into the mirage tool.  This article uses mirage-2.9.0 (which might be outdated at the time of reading).
+
+Let us start with a very minimal unikernel, consisting of a `unikernel.ml`:
+
+```OCaml
+module Main (C: V1_LWT.CONSOLE) = struct
+  let start c = C.log_s c "hello world"
+end
+```
+
+and the following `config.ml`:
+
+```OCaml
+open Mirage
+
+let () =
+  register "console" [
+    foreign "Unikernel.Main" (console @-> job) $ default_console
+  ]
+```
+
+If we `mirage configure --unix` and `mirage build`, we end up (at least on a 64bit FreeBSD-11 system with OCaml 4.02.3) with a 2.8MB `main.native`, dynamically linked against `libthr`, `libm` and `libc` (`ldd` ftw), or a 4.5MB Xen virtual image (built on a 64bit Linux computer).
+
+In the `_build` directory, we can find some object files and their byte sizes:
+
+```bash
+ 7144 key_gen.o
+14568 main.o
+ 3552 unikernel.o
+```
+
+These do not sum up to 2.8MB ;)
+
+We did not specify any dependencies ourselves, thus all bits have been injected automatically by the `mirage` tool.  Let us dig a bit deeper what we actually used.  `mirage configure` generates a `Makefile` which includes the dependent OCaml libraries, and the packages which are used:
+
+```Makefile
+LIBS   = -pkgs functoria.runtime, mirage-clock-unix, mirage-console.unix, mirage-logs, mirage-types.lwt, mirage-unix, mirage.runtime
+PKGS   = functoria lwt mirage-clock-unix mirage-console mirage-logs mirage-types mirage-types-lwt mirage-unix
+```
+
+I explained bits of our configuration DSL [Functoria](/Posts/Functoria) earlier.  The [mirage-clock](https://github.com/mirage/mirage-clock) device is automatically injected by mirage, providing an implementation of the `CLOCK` device.  We use a [mirage-console](https://github.com/mirage/mirage-console) device, where we print the `hello world`.  Since `mirage-2.9.0` the logging library (and its reporter, [mirage-logs](https://github.com/mirage/mirage-logs)) is automatically injected as well, which actually uses the clock.  Also, the [mirage type signatures](https://github.com/mirage/mirage/tree/master/types) are required.  The [mirage-unix](https://github.com/mirage/mirage-platform/tree/master/unix) contains a `sleep`, a `main`, and provides the argument vector `argv` (all symbols in the `OS` module).
+
+Looking into the archive files of those libraries, we end up with ~92KB (NB `mirage-types` only contains types, and thus no runtime data):
+
+```bash
+15268 functoria/functoria-runtime.a
+ 3194 mirage-clock-unix/mirage-clock.a
+12514 mirage-console/mirage_console_unix.a
+24532 mirage-logs/mirage_logs.a
+14244 mirage-unix/OS.a
+21964 mirage/mirage-runtime.a
+```
+
+This still does not sum up to 2.8MB since we're missing the transitive dependencies.
+
+### Visualising recursive dependencies
+
+Let's use a different approach: first recursively find all dependencies.  We do this by using `ocamlfind` to read `META` files which contain a list of dependent libraries in their `requires` line.  As input we use `LIBS` from the Makefile snippet above.  The code (OCaml script) is [available here](https://gist.github.com/hannesm/bcbe54c5759ed5854f05c8f8eaee4c79).  The colour scheme is red for pieces of the OCaml distribution, yellow for input packages, and orange for the dependencies.
+
+[<img src="https://www.cl.cam.ac.uk/~hm519/mirage-console.svg" title="UNIX dependencies of hello world" width="700" />](https://www.cl.cam.ac.uk/~hm519/mirage-console.svg)
+
+This is the UNIX version only, the Xen version looks similar (but worth mentioning).
+
+[<img src="https://www.cl.cam.ac.uk/~hm519/mirage-console-xen.svg" title="Xen dependencies of hello world" width="700" />](https://www.cl.cam.ac.uk/~hm519/mirage-console-xen.svg)
+
+You can spot at the right that `mirage-bootvar` uses `re`, which provoked me to [open a PR](https://github.com/mirage/mirage-bootvar-xen/pull/19), but Jon Ludlam [already had a nicer PR](https://github.com/mirage/mirage-bootvar-xen/pull/18) which is now merged (and a [new release is in preparation](https://github.com/mirage/mirage-bootvar-xen/pull/20)).
+
+### Counting bytes
+
+While a dependency graphs gives a big picture of what the composed libraries of a MirageOS unikernel, we also want to know how many bytes they contribute to the unikernel.  The dependency graph only contains the OCaml-level dependencies, but MirageOS has in addition to that a `pkg-config` universe of the libraries written in C (such as mini-os, openlibm, ...).
+
+We overapproximate the sizes here by assuming that a linker simply concatenates all required object files.  This is not true, since the sum of all objects is empirically factor two of the actual size of the unikernel.
+
+I developed a pie chart visualisation, but a friend of mine reminded me that such a chart is pretty useless for comparing slices for the human brain.  I spent some more time to develop a treemap visualisation to satisfy the brain.  The implemented algorithm is based on [squarified treemaps](http://www.win.tue.nl/~vanwijk/stm.pdf), but does not use implicit mutable state.  In addition, the [provided script](https://gist.github.com/hannesm/c8a9b2e75bb4f98b5100a838ea125f3b) parses common linker flags (`-o -L -l`) and collects arguments to be linked in.  It can be passed to `ocamlopt` as the C linker, more instructions at the end of `treemap.ml` (which should be cleaned up and integrated into the mirage tool, as mentioned earlier).
+
+[<img src="https://www.cl.cam.ac.uk/~hm519/mirage-console-bytes.svg" title="byte sizes of hello-world (UNIX)" width="700" />](https://www.cl.cam.ac.uk/~hm519/mirage-console-bytes.svg)
+
+[<img src="https://www.cl.cam.ac.uk/~hm519/mirage-console-xen-bytes-full.svg" title="byte sizes of hello-world (Xen)" width="700" />](https://www.cl.cam.ac.uk/~hm519/mirage-console-xen-bytes-full.svg)
+
+As mentioned above, this is an overapproximation.  The `libgcc.a` is only needed on Xen (see [this comment](https://github.com/mirage/mirage/commit/c17f2f60a6309322ba45cecb00a808f62f05cf82#commitcomment-17573123)), I have not yet tracked down why there is a `libasmrun.a` and a `libxenasmrun.a`.
+
+### More complex examples
+
+Besides the hello world, I used the same tools on our [BTC Piñata](http://ownme.ipredator.se).
+
+[<img src="https://www.cl.cam.ac.uk/~hm519/pinata-deps.svg" title="Piñata dependencies" width="700" />](https://www.cl.cam.ac.uk/~hm519/pinata-deps.svg)
+
+[<img src="https://www.cl.cam.ac.uk/~hm519/pinata-bytes.svg" title="Piñata byte sizes" width="700" />](https://www.cl.cam.ac.uk/~hm519/pinata-bytes.svg)
+
+OCaml does not yet do dead code elimination, but there [is a PR](https://github.com/ocaml/ocaml/pull/608) based on the flambda middle-end which does so.  I haven't yet investigated numbers using that branch.
+
+I'm interested in feedback, either via
+[twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
+GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
