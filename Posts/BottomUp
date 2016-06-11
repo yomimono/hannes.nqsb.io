@@ -98,7 +98,11 @@ Besides the hello world, I used the same tools on our [BTC Piñata](http://ownme
 
 [<img src="https://www.cl.cam.ac.uk/~hm519/pinata-bytes.svg" title="Piñata byte sizes" width="700" />](https://www.cl.cam.ac.uk/~hm519/pinata-bytes.svg)
 
+### Conclusion
+
 OCaml does not yet do dead code elimination, but there [is a PR](https://github.com/ocaml/ocaml/pull/608) based on the flambda middle-end which does so.  I haven't yet investigated numbers using that branch.
+
+Those counting statistics could go into more detail (e.g. using `nm` to count the sizes of concrete symbols - which opens the possibility to see which symbols are present in the objects, but not in the final binary).  Also, collecting the numbers for each module in a library would be great to have.  In the end, it would be great to easily spot the source fragments which are responsible for a huge binary size (and getting rid of them).
 
 I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
