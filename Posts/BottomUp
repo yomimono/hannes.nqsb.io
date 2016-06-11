@@ -7,7 +7,7 @@ abstract: looking into dependencies and their sizes
 
 I was busy writing code, text, talks, and also spend a week without Internet, where I ground and brewed 15kg espresso.
 
-## Size of a MrageOS unikernel
+## Size of a MirageOS unikernel
 
 There have been lots of claims and myths around the concrete size of MirageOS unikernels.  In this article I'll apply some measurements which overapproximate the binary sizes.  The tools used for the visualisations are available online, and soon hopefully upstreamed into the mirage tool.  This article uses mirage-2.9.0 (which might be outdated at the time of reading).
 
