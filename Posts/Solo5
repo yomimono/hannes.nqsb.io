@@ -86,6 +86,7 @@ I have not yet played with network, TLS, and other things...
 - I'm not happy to require `ld` from the ports (but the one in base does not produce sensible binaries with `-z max-page-size=0x1000` [related](https://github.com/djwillia/solo5/pull/56))
 - I'm also not happy to copy around include files and depend on gcc just for `stddef.h`, is there any sensible way to have freestanding includes?  Should `-nostdinc` be used? (It looks necessary on Linux).
 - Via [twitter](https://twitter.com/bhyve_dev/status/748930600581492736), bhyve devs suggested to port ukvm to ubhyve.  This is a great idea, to no longer depend on virtio, and get more speed.  Any takers?
+- Debugging via gdb should be doable somehow, bhyve has [some support for gdb](https://wiki.freebsd.org/bhyve/DebuggingWithGdb), but it is unclear to me what I need to do to enter the debugger (busy looping in the VM and a gdb remote to the port opened by bhyve does not work).
 
 ## Conclusion
 
