@@ -53,7 +53,7 @@ sudo grub2-bhyve -M 128M console
 > multiboot (host)/home/hannes/mirage-skeleton/console/mir-console.virtio
 > boot
 
-bhyve -A -H -P -s 0:0,hostbridge -s 1:0,lpc -l com1,stdio -m 128M console
+sudo bhyve -A -H -P -s 0:0,hostbridge -s 1:0,lpc -l com1,stdio -m 128M console
 
 >>output:
             |      ___|
@@ -90,7 +90,7 @@ I have not yet played with network, TLS, and other things...
 
 ## Conclusion
 
-I managed to get solo5 to work with bhyve.  I even use clang instead of gcc and don't need to link `libgcc.a`. :)  It is great to see further development in hypervisors and virtual machine monitors.  Especially thanks to [Martin Lucina](https://github.com/mato) for getting things sorted.
+I managed to get solo5 to work with bhyve.  I even use clang instead of gcc and don't need to link `libgcc.a`. :)  It is great to see further development in hypervisors and virtual machine monitors.  Especially thanks to [Martin Lucina](https://lucina.net) for getting things sorted.
 
 I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
