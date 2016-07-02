@@ -28,13 +28,13 @@ These instructions are still slightly bumpy.  If you've a FreeBSD with bhyve (I 
 You need some software from the ports (this should be cleaned up at some point), at the moment `devel/gmake`, `lang/gcc48`, `devel/binutils`, and `sysutils/grub2-bhyve`.
 
 Some header files from the system need to be included in the search path (please tell if there is a better solution, the build uses `nostdinc` and then includes the `gcc48` include path for `stddef.h` and friends):
-```
+```bash
 mkdir /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include/sys /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include/machine /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include/x86
 cp machine/_types.h machine/endian.h sys/_types.h sys/cdefs.h x86/_types.h x86/endian.h osreldate.h /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include`
 ```
 
 A bunch of opam pins are needed (using pins instead of the [solo5 repository](https://github.com/djwillia/opam-solo5/) since pins are local to compiler switches, whereas repositories are global, and I needed to modify some bits anyways):
-```
+```bash
 opam pin add -n solo5-kernel-virtio https://github.com/hannesm/solo5.git#clang
 opam pin add -n ocaml-freestanding https://github.com/hannesm/ocaml-freestanding.git#FreeBSD-clang
 opam pin add -n mirage-solo5 https://github.com/djwillia/mirage-platform.git#solo5
@@ -48,7 +48,7 @@ An `opam install mirage mirage-logs solo5-kernel-virtio mirage-bootvar-solo5 mir
 Now you can get the [mirage-skeleton](https://github.com/mirage/mirage-skeleton) repository, and inside of `console`, run `mirage configure --no-opam --virtio` followed by `gmake`.  There should be a resulting `mir-console.virtio`.
 
 Once that is in place, start your VM:
-```
+```bash
 sudo grub2-bhyve -M 128M console
 > multiboot (host)/home/hannes/mirage-skeleton/console/mir-console.virtio
 > boot
