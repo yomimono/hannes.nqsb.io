@@ -30,7 +30,8 @@ You need some software from the ports (this should be cleaned up at some point),
 Some header files from the system need to be included in the search path (please tell if there is a better solution, the build uses `nostdinc` and then includes the `gcc48` include path for `stddef.h` and friends):
 ```bash
 mkdir /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include/sys /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include/machine /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include/x86
-cp machine/_types.h machine/endian.h sys/_types.h sys/cdefs.h x86/_types.h x86/endian.h osreldate.h /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include`
+
+cp machine/_types.h machine/endian.h sys/_types.h sys/cdefs.h x86/_types.h x86/endian.h osreldate.h /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include
 ```
 
 A bunch of opam pins are needed (using pins instead of the [solo5 repository](https://github.com/djwillia/opam-solo5/) since pins are local to compiler switches, whereas repositories are global, and I needed to modify some bits anyways):
