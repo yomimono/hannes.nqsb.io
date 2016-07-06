@@ -55,8 +55,11 @@ sudo grub2-bhyve -M 128M console
 > boot
 
 sudo bhyve -A -H -P -s 0:0,hostbridge -s 1:0,lpc -l com1,stdio -m 128M console
+```
 
->>output:
+The following output will appear on your controlling terminal:
+
+```bash
             |      ___|
   __|  _ \  |  _ \ __ \
 \__ \ (   | | (   |  ) |
