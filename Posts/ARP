@@ -1,0 +1,89 @@
+---
+title: Re-engineering ARP
+author: hannes
+tags: mirageos, protocol
+abstract: If you want it as you like, you've to do it yourself
+---
+
+## What is ARP?
+
+ARP is the *A*ddress *R*esolution *P*rotocol, widely used in legacy IP networks (which support only IPv4).  It is responsible to translate an IPv4 address to an Ethernet address.  It is strictly more general, abstracting over protocol and hardware addresses.  It is basically DNS (the domain name system) on a different layer.
+
+ARP is link-local: ARP frames are not routed into other networks, all stay in the same broadcast domain.  Thus there is no need for a hop limit (time-to-live).  A reverse lookup mechanism (hardware address to protocol) is also available, named reverse ARP ;).
+
+I will focus on ARP in this article, as used widely to translate IPv4 addresses into Ethernet addresses.  There are two operations in ARP: request and response.  A request is usually broadcasted to all hosts (by setting the destination to the broadcast Ethernet address, `ff:ff:ff:ff:ff:ff`), while a reply is send via unicast (to the host which requested that information).
+
+The frame format is pretty straightforward: 2 bytes hardware address type, 2 bytes protocol type, 1 byte length for both types, 2 bytes operation, followed by source addresses (hardware and protocol), and target addresses.  In total 28 bytes, considering 48 bit Ethernet addresses and 32 bit IPv4 addresses.
+
+It was initially specified in [RFC 826](https://tools.ietf.org/html/rfc826), but reading through [RFC 1122](https://tools.ietf.org/html/rfc1122) (requirements for Internet Hosts - Communication layer), and maybe the newer [RFC 5227](https://tools.ietf.org/html/rfc5227) (IPv4 address conflict detection) does not hurt.
+
+On UNIX systems, you can investigate your arp table, also called arp cache, using the `arp` command line utility.
+
+### Protocol logic
+
+Let us look what our ARP handler actually needs to do?  Translating IPv4 addresses to Ethernet addresses, but where does it learn new information?
+
+First of all, our ARP handler needs to know its own IPv4 address and its Ethernet address.  It will even broadcast them on startup, so-called gratuitous ARP.  The purpose of this is to inform all other hosts on the same network that we are here now.  And if another host, let's name it barf, has the same IPv4 address, some sort of conflict resolution needs to happen (otherwise all hosts on the network are confused to whether to send us or barf packets).
+
+Once initialisation is over, our ARP handler needs to wait for ARP requests from other hosts on the network, and if addresses to our IPv4 address, issue a reply.  The other event which might happen is that a user wants to send an IPv4 packet to another host on the network.  In this case, we either already have the Ethernet address in our cache, or we need to send an ARP request to the network and wait for a reply.  Since packets might get lost, we actually need to retry sending ARP requests until a limit is reached.  To keep the cache in a reasonable size, old entries should be dropped if unused.  Also, the Ethernet address of hosts may change, due to hardware replacement or failover.
+
+That's it.  Pretty straightforward.
+
+## Design
+
+Back in 2008, together with Andreas Bogk, we just used a hash table and installed expiration and retransmission timers when needed.  Certainly timers sometimes needed to be cancelled, and testing the code was cumbersome.  It were only [250 lines of Dylan code](https://github.com/dylan-hackers/network-night-vision/blob/master/network/ip-stack/layers/network/arp/arp.dylan) plus some [wire format definition](https://github.com/dylan-hackers/network-night-vision/blob/master/protocols/ipv4.dylan).
+
+Nowadays, after some years of doing formal verification and typed functional programming, I try to have effects, including mutable state, isolated and explicitly annotated.  The code should not contain surprises, but straightforward to understand.  The core protocol logic should not be convoluted with side effects, rather a small wrapper around it should.   Once this is achieved, testing is straightforward.  If the fashion of the asynchronous task library changes (likely with OCaml multicore), the core logic can be reused.  It can also be repurposed to run as a test oracle.  You can read more marketing of this style in our [Usenix security paper](https://usenix15.nqsb.io).
+
+My proposed style and hash tables are not good friends, since hash tables in OCaml are imperative structures.  Instead, a *Map* ([documentation](http://caml.inria.fr/pub/docs/manual-ocaml/libref/Map.html)) is a functional data structure for associating keys with values.  Its underlying data structure is a balanced binary tree.
+
+Our ARP handler certainly has some *state*, at least its IPv4 address, its Ethernet address, and the map containing entries.
+
+We have to deal with the various effects mentioned earlier:
+- *Network* we provide a function taking a state and a packet, transforming to successor state, potentially output on the network, and potentially waking up tasks which are awaiting the mac address.
+- *Timer* we need to rely on an external periodic event calling our function `tick`, which transforms a state to a successor state, a list of ARP requests to be send out (retransmission), and a list of tasks to be informed that a timeout occurred.
+- *Query* a query for an IPv4 address using some state leads to a successor state, and either an immediate answer with the Ethernet address, or an ARP request to be sent and waiting for an answer, or just waiting for an answer in the case another task has already requested that IPv4 address.  Since we don't want to convolute the protocol core with tasks, we'll let the effectful layer decide how to achieve that by abstracting over some alpha to store, and requiring a `merge : alpha option -> alpha` function.
+
+### Excursion: security
+
+ARP is a link-local protocol, thus attackers have to have access to the same link-layer: either a cable in the same switch or hub, or in the same wireless network (if you're into modern technology).
+
+A very common attack vector for protocols is the so called person in the middle attack, where the attacker sits between you and the remote host.  An attacker can achieve this using ARP spoofing: if they can convince your computer that the attacker is the gateway, your computer will send all packets to the attacker, who either forwards them to the remote host, or modifies them, or drops them.
+
+ARP does not employ any security mechanism, it is more a question of receiving the first answer (depending on the implementation).  A common countermeasure is to manually fill the cache with the gateway statically.  This only needs updates if the gateway is replaced, or gets a new network card.
+
+Denial of service attacks are also possible using ARP: if the implementation preserves all replies, the cache might expand immensely.  This happens sometimes in switch hardware, which have a limited cache, and once it is full, they go into hub mode.  This means all frames are broadcasted on all ports.  This enables an attacker to passively sniff all traffic in the local network.
+
+One denial of service attack vector is due to choosing a hash table as underlying store.  Its hash function should be collision-resistant, one way, and its output should be fixed length.  A good choice would be a cryptographic hash function (like SHA-256), but these are too expensive and thus rarely used for hash tables. [Denial of Service via Algorithmic Complexity Attacks](https://www.usenix.org/conference/12th-usenix-security-symposium/denial-service-algorithmic-complexity-attacks) and [Efficient Denial of Service Attacks on Web Application Platforms](https://events.ccc.de/congress/2011/Fahrplan/attachments/2007_28C3_Effective_DoS_on_web_application_platforms.pdf) are worth studying.  If you expose your hash function to user input (and don't use a private seed), you might accidentally open your attack surface.
+
+### Back to our design
+
+To mitigate person in the middle attacks, we provide an API to add static entries, which are never overwritten by network input.  While our own IPv4 addresses are advertised if a matching ARP request was received, other static entries are not advertised (neither are dynamic entries).  We do only insert entries to our cache if we have an outstanding request or already an entry.  To provide low latency, just before a dynamic entry would timeout, we send another request for this IPv4 address to the network.
+
+### Implementation
+
+I have the [source](https://github.com/hannesm/arp), its [documentation](https://hannesm.github.io/arp), a test suite and a [coverage report](https://hannesm.github.io/arp/coverage) online.
+
+The implementation of the core logic still fits in less than 250 lines of code.  Below 100 more lines are needed for decoding and encoding byte buffers.  And another 140 lines to implement the Mirage ARP interface.  Tests are available which cover the protocol logic and decoding/encoding to 100%.
+
+The effectful layer is underspecified (especially regarding conflicts: what happens if there is an outstanding request for an IPv4 address and I add a static entry for this?).  There is an implementation based on hash tables, which I used to benchmark a bit.
+
+Correctness aside, the performance should be in the same ballpark.  I am mainly interested in how much input can be processed, being it invalid input, random valid input, random requests, random replies, and a mix of all that above plus some valid requests which should be answered.  I ran the tests in two modes, one with accelerated time (where a minute passed in a second) to increase the pressure on the cache (named fast), one in real time.  The results are in the table below (bigger numbers are better).  It shows that neither approach is slower by design (of course there is still room for improvement).
+
+```
+| Test          | Hashtable |    fast |     Map |    fast |
+| ------------- | --------- | ------- | ------- | ------- |
+| invalid       |   2813076 | 2810684 | 2806899 | 2835905 |
+| valid         |   1126805 | 1320737 | 1770123 | 1785630 |
+| request       |   2059550 | 2044507 | 2109540 | 2119289 |
+| replies       |   1293293 | 1313405 | 1432225 | 1449860 |
+| mixed         |   2158481 | 2191617 | 2196092 | 2213530 |
+| queries       |     42058 |   45258 |   44803 |   44379 |
+```
+
+I ran each benchmark 3 times on a single core (used `cpuset -l 3` to pin it to one specific core) and picked the best set of results.  The measure is number of packets processed over 5 seconds, using the Mirage ARP API.  The full source code is in the `bench` subdirectory.  As always, take benchmarks with a grain of salt: everybody will always find the right parameters for their microbenchmarks.
+
+
+I'm interested in feedback, either via
+[twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
+GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
