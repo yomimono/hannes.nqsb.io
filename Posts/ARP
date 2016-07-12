@@ -83,7 +83,7 @@ Correctness aside, the performance should be in the same ballpark.  I am mainly 
 
 I ran each benchmark 3 times on a single core (used `cpuset -l 3` to pin it to one specific core) and picked the best set of results.  The measure is number of packets processed over 5 seconds, using the Mirage ARP API.  The full source code is in the `bench` subdirectory.  As always, take benchmarks with a grain of salt: everybody will always find the right parameters for their microbenchmarks.
 
-There was even a bug in the MirageOS ARP code: [its definition of gratitous ARP is wrong](https://github.com/mirage/mirage-tcpip/issues/225).
+There was even a bug in the MirageOS ARP code: [its definition of gratuitous ARP is wrong](https://github.com/mirage/mirage-tcpip/issues/225).
 
 I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
