@@ -25,13 +25,17 @@ While lots of people seem to like KVM and Linux, I still prefer FreeBSD, their j
 
 These instructions are still slightly bumpy.  If you've a FreeBSD with bhyve (I use FreeBSD-CURRENT), and OCaml and opam (>=1.2.2) installed, it is pretty straightforward to get solo5 running.  First, I'd suggest to use a fresh opam switch in case you work on other OCaml projects: `opam switch -A solo5 4.03.0` (followed by ``eval `opam config env` `` to setup some environment variables).
 
-You need some software from the ports (this should be cleaned up at some point), at the moment `devel/gmake`, `lang/gcc48`, `devel/binutils`, and `sysutils/grub2-bhyve`.
+You need some software from the ports (this should be cleaned up at some point), at the moment `devel/gmake`, `devel/binutils`, and `sysutils/grub2-bhyve`.
 
-Some header files from the system need to be included in the search path (please tell if there is a better solution, the build uses `nostdinc` and then includes the `gcc48` include path for `stddef.h` and friends):
+Some header files from the system need to be included in the search path:
 ```bash
-mkdir /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include/sys /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include/machine /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include/x86
-
-cp machine/_types.h machine/endian.h sys/_types.h sys/cdefs.h x86/_types.h x86/endian.h osreldate.h /usr/local/lib/gcc48/gcc/x86_64-portbld-freebsd11.0/4.8.5/include
+TMP="/tmp/myinclude"
+mkdir $TMP $TMP/sys $TMP/x86 $TMP/machine
+cd /usr/include
+cp machine/_stdint.h machine/_types.h machine/endian.h $TMP/machine
+cp sys/_null.h sys/_stdint.h sys/_types.h sys/cdefs.h $TMP/sys
+cp x86/float.h x86/_stdint.h x86/stdarg.h x86/endian.h x86/_types.h $TMP/x86
+cp float.h osreldate.h stddef.h stdint.h stdbool.h stdarg.h $TMP
 ```
 
 A bunch of opam pins are needed (using pins instead of the [solo5 repository](https://github.com/djwillia/opam-solo5/) since pins are local to compiler switches, whereas repositories are global, and I needed to modify some bits anyways):
@@ -44,6 +48,8 @@ opam pin add -n mirage-console https://github.com/mirage/mirage-console-solo5.gi
 ```
 
 An `opam install mirage mirage-logs solo5-kernel-virtio mirage-bootvar-solo5 mirage-console mirage-solo5` should provide you with a basic set of libraries.
+
+On FreeBSD, we'll need `setenv LD /usr/local/bin/ld` to get the linker from the ports (system linker does not generate good binaries).
 
 Now you can get the [mirage-skeleton](https://github.com/mirage/mirage-skeleton) repository, and inside of `console`, run `mirage configure --no-opam --virtio` followed by `gmake`.  There should be a resulting `mir-console.virtio`.
 
