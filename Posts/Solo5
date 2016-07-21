@@ -43,8 +43,6 @@ A bunch of opam pins are needed (using pins instead of the [solo5 repository](ht
 opam pin add -n solo5-kernel-virtio https://github.com/hannesm/solo5.git#FreeBSD
 opam pin add -n ocaml-freestanding https://github.com/hannesm/ocaml-freestanding.git#FreeBSD
 opam pin add -n mirage https://github.com/hannesm/mirage.git#s5
-opam pin add -n mirage-bootvar-solo5 https://github.com/mirage/mirage-bootvar-solo5.git
-opam pin add -n mirage-console https://github.com/mirage/mirage-console-solo5.git
 ```
 
 An `opam install mirage mirage-logs solo5-kernel-virtio mirage-bootvar-solo5 mirage-console mirage-solo5` should provide you with a basic set of libraries.
