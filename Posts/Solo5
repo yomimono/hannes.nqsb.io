@@ -33,7 +33,7 @@ TMP="/tmp/myinclude"
 mkdir $TMP $TMP/sys $TMP/x86 $TMP/machine
 cd /usr/include
 cp machine/_stdint.h machine/_types.h machine/endian.h $TMP/machine
-cp sys/_null.h sys/_stdint.h sys/_types.h sys/cdefs.h $TMP/sys
+cp sys/_null.h sys/_stdint.h sys/_types.h sys/cdefs.h sys/endian.h $TMP/sys
 cp x86/float.h x86/_stdint.h x86/stdarg.h x86/endian.h x86/_types.h $TMP/x86
 cp float.h osreldate.h stddef.h stdint.h stdbool.h stdarg.h $TMP
 ```
@@ -43,6 +43,9 @@ A bunch of opam pins are needed (using pins instead of the [solo5 repository](ht
 opam pin add -n solo5-kernel-virtio https://github.com/hannesm/solo5.git#FreeBSD
 opam pin add -n ocaml-freestanding https://github.com/hannesm/ocaml-freestanding.git#FreeBSD
 opam pin add -n mirage --dev-repo
+
+opan pin add -n mirage-entropy-solo5 --dev-repo
+opam pin add -n nocrypto https://github.com/hannesm/ocaml-nocrypto.git#p
 ```
 
 An `opam install mirage mirage-logs solo5-kernel-virtio mirage-bootvar-solo5 mirage-console mirage-solo5` should provide you with a basic set of libraries.
