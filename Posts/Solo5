@@ -6,6 +6,7 @@ abstract: MirageOS solo5 multiboot native on bhyve
 ---
 
 Update (2016-10-19): all has been merged upstream now!
+Update (2016-10-30): `static_website_tls` works (TLS,HTTP,network via tap device)!
 
 ## What?
 
