@@ -70,7 +70,7 @@ Kernel done.
 Goodbye!
 ```
 
-Network and TLS stack ~~~is supposed to work~~~ works as well (tested 30th October).
+Network and TLS stack works as well (tested 30th October).
 
 ## Open issues
 
