@@ -7,8 +7,6 @@ abstract: MirageOS solo5 multiboot native on bhyve
 
 Update (2016-10-19): all has been merged upstream now!
 
-There were some busy times, several pull requests are still waiting to get merged (e.g. some cosmetics in [mirage](https://github.com/mirage/mirage/pull/544) as preconditions for treemaps and dependency diagrams), I [proposed](https://github.com/mirage/mirage/pull/547) to use `sleep_ns : int64 -> unit io` instead of the `sleep : float -> unit io` (nobody wants floating point numbers); also an RFC for [random](https://github.com/mirage/mirage/pull/551), Matt Gray [proposed](https://github.com/mirage/mirage/pull/548) to get rid of `CLOCK` (and have a `PCLOCK` and a `MCLOCK` instead).  Soon there will be a major MirageOS release which breaks all the previous unikernels! :)
-
 ## What?
 
 As described [earlier](https://hannes.nqsb.io/Posts/OperatingSystem), MirageOS is a library operating system developed in [OCaml](https://hannes.nqsb.io/Posts/OCaml).  The code size is already pretty small, deployments are so far either as a UNIX binary or as a Xen virtual machine.
@@ -87,3 +85,6 @@ I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
 
+# Other updates in the MirageOS ecosystem
+
+There were some busy times, several pull requests are still waiting to get merged (e.g. some cosmetics in [mirage](https://github.com/mirage/mirage/pull/544) as preconditions for treemaps and dependency diagrams), I [proposed](https://github.com/mirage/mirage/pull/547) to use `sleep_ns : int64 -> unit io` instead of the `sleep : float -> unit io` (nobody wants floating point numbers); also an RFC for [random](https://github.com/mirage/mirage/pull/551), Matt Gray [proposed](https://github.com/mirage/mirage/pull/548) to get rid of `CLOCK` (and have a `PCLOCK` and a `MCLOCK` instead).  Soon there will be a major MirageOS release which breaks all the previous unikernels! :)
