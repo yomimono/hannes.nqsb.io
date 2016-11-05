@@ -1,0 +1,176 @@
+---
+title: Exfiltrating log data using syslog
+author: hannes
+tags: mirageos, protocol, logging
+abstract: sometimes preservation of data is useful
+---
+
+It has been a while since my last entry... I've been busy working on too many
+projects in parallel, and was also travelling on several continents.  I hope to
+get back to a biweekly cycle.
+
+## What is syslog?
+
+According to [Wikipedia](https://en.wikipedia.org/wiki/Syslog), syslog is a
+standard for message logging.  Syslog permits separation of the software which
+generates, stores, reports, and analyses the message.  A syslog message contains
+at least a timestamp, a facility, and a severity.  It was initially specified in
+[RFC 3164](https://tools.ietf.org/html/rfc3164), though usage predates this RFC.
+
+For a unikernel, which likely won't have any persistent storage, syslog is a way
+to emit log messages (HTTP access log, debug messages, ...) via the network, and
+defer the persistency problem to some other service.
+
+Lots of programming languages have logger libraries, which reflect the different
+severity of syslog roughly as log levels (debug, informational, warning, error,
+fatal).  So does OCaml since the beginning of 2016, there is the
+[Logs](http://erratique.ch/software/logs) library which separates log message
+generation from reporting: the closure producing the log string is only
+evaluated if there is a reporter which needs to send it out.  Additionally, the
+reporter can extend the message with the log source name, a timestamp, etc.
+
+The Logs library is slowly getting adopted by the MirageOS community (you can
+see an incomplete list
+[here](https://opam.ocaml.org/packages/logs/logs.0.6.2/)), there are reporters
+available which integrate into [Apple System
+Log](https://github.com/mirage/ocaml-asl), [Windows event
+log](https://github.com/djs55/ocaml-win-eventlog), and also for [MirageOS
+console](https://github.com/mirage/mirage-logs).  There is a command-line
+argument interface to set the log levels of your individual sources, which is
+pretty neat.  For debugging and running on Unix, console output is usually
+sufficient, but for production usage having a console in some `screen` or `tmux`
+or dumped to a file is usually annoying.
+
+Gladly there was already the
+[syslog-message](https://github.com/verbosemode/syslog-message) library, which
+encodes and decodes syslog messages from the wire format to a typed
+representation.  I plugged those together and [implemented a
+reporter](https://hannesm.github.io/logs-syslog/doc/Logs_syslog.html).  The
+[simplest
+one](https://github.com/hannesm/logs-syslog/blob/e35ffe704e998d9a6867f3f504c103861a4408ef/src/logs_syslog_unix.ml#L4-L32)
+emits each log message via UDP to a log collector.  All reporters contain a
+socket and handle socket errors themselves (trying to recover) - your
+application (or unikernel) shouldn't fail just because the log collector is
+currently offline.
+
+The setup for Unix is straightforward:
+
+```OCaml
+Logs.set_reporter (udp_reporter (Unix.inet_addr_of_string "127.0.0.1") ())
+```
+
+It will report all log messages (you have to set the Log level yourself,
+defaults to warning) to your local syslog.  You might have already listening a
+collector on your host, look in `netstat -an` for UDP port 514 (and in your
+`/etc/syslog.conf` to see where log messages are routed to).
+
+You can even do this from the OCaml toplevel (after `opam install logs-syslog`):
+```OCaml
+$ utop
+# #require "logs-syslog.unix";;
+# Logs.set_reporter (Logs_syslog_unix.udp_reporter (Unix.inet_addr_of_string "127.0.0.1") ());;
+# Logs.app (fun m -> m "hello, syslog world");;
+```
+
+I configured my syslog to have all `informational` messages routed to
+`/var/log/info.log`, you can also try `Logs.err (fun m -> m "err");;` and look
+into your `/var/log/messages`.
+
+This is a good first step, but we want more: on the one side integration into
+MirageOS, and a more reliable log stream (what about authentication and
+encryption?).  I'll cover both topics in the rest of this article.
+
+### Reliable syslog
+
+The old BSD syslog RFC is obsoleted by [RFC
+5424](https://tools.ietf.org/html/rfc5424), which describes a new wire format,
+and also a transport over TCP, and [TLS](https://tools.ietf.org/html/rfc5425) in
+a subsequent RFC.  Unfortunately the `syslog-message` library does not yet
+support the new format (which supports user-defined structured data (key/value
+fields), and unicode encoding), but I'm sure one day it will.
+
+Another competing syslog [RFC 3195](https://tools.ietf.org/html/rfc3195) uses
+XML encoding, but I have not bothered to look deeper into that one.
+
+I implemented both the transport via TCP and via TLS.  There are various
+solutions used for framing (as described in [RFC
+6587](https://tools.ietf.org/html/rfc6587)): either prepend a decimal encoded
+length (also specified in RFC6524, but obviously violates streaming
+characteristics: the log source needs to have the full message in memory before
+sending it out), or have a special delimiter between messages (0 byte, line
+feed, CR LN, a custom byte sequence).
+
+The [TLS
+reporter](https://hannesm.github.io/logs-syslog/doc/Logs_syslog_lwt_tls.html)
+uses our TLS library written entirely in OCaml, and requires mutual
+authentication, both the log reporter has a private key and certificate, and the
+log collector needs to present a certificate chain rooted in a provided CA
+certificate.
+
+Logs supports synchronous and asynchronous logging (where the latter is the
+default, please read the [note on synchronous
+logging](http://erratique.ch/software/logs/doc/Logs.html#sync)).  In logs-syslog
+this behaviour is not altered.  There is no buffer or queue and single writer
+task to emit log messages, but a mutex and error recovery which tries to
+reconnect once for each log message (of course only if there is not already a
+working connection).  It is still not clear to me what the desired behaviour
+should be, but when introducing buffers I'd loose the synchronous logging (or
+will have to write rather intricate code).
+
+To rewrap, `logs-syslog` implements the old BSD syslog protocol via UDP, TCP,
+and TLS.  There are reporters available using only the Caml
+[Unix](https://hannesm.github.io/logs-syslog/doc/Logs_syslog_unix.html) module
+(dependency-free!), using
+[Lwt](https://hannesm.github.io/logs-syslog/doc/Logs_syslog_lwt.html) (also
+[lwt-tls](https://hannesm.github.io/logs-syslog/doc/Logs_syslog_lwt_tls.html),
+and using [MirageOS
+interface](https://hannesm.github.io/logs-syslog/doc/Logs_syslog_mirage.html)
+(also
+[TLS](https://hannesm.github.io/logs-syslog/doc/Logs_syslog_mirage_tls.html)).
+The code size is below 500 lines in total.
+
+### MirageOS syslog in production
+
+As collector I use syslog-ng, which is capable of receiving both the new and the
+old syslog messages on all three transports.  The configuration snippet for a
+BSD syslog TLS collector is as following:
+
+```
+source s_tls {
+  tcp(port(6514)
+      tls(peer-verify(require-trusted)
+          cert-file("/etc/log/server.pem")
+          key-file("/etc/log/server.key")
+          ca-dir("/etc/log/certs"))); };
+
+destination d_tls { file("/var/log/ng-tls.log"); };
+
+log { source(s_tls); destination(d_tls); };
+```
+
+The `"/etc/log/certs"` directory contains the CA certificates, together with
+links to their hashes (with a 0 appended: ``ln -s cacert.pem `openssl x509
+-noout -hash -in cacert.pem`.0``).  I used
+[certify](https://github.com/yomimono/ocaml-certify) to generate the CA
+infrastructure (CA cert, a server certificate for syslog-ng, and a client
+certificate for my MirageOS unikernel).
+
+I added the boilerplate code to [this blog
+software](https://github.com/hannesm/Canopy/commit/732f3245ebbcf5f79e3d47ae797ca778568f896b),
+surely this should be massaged and moved up the stack, thus it is easily
+available for other MirageOS unikernels.  It is running since a week like a
+charm (already collected 700KB of HTTP access log), and feels much better than
+previous ad-hoc solutions to exfiltrate log data.
+
+The downside of syslog is obviously that it only works when the network is up --
+thus it does not work while booting, or when a persistent network failure
+occured.
+
+[Code is on GitHub](https://github.com/hannesm/logs-syslog), [documentation is
+online](https://hannesm.github.io/logs-syslog/doc), released in opam.  A version
+of logs-syslog supporting the current development version of MirageOS is
+available in the [dev branch](https://github.com/hannesm/logs-syslog/tree/dev).
+
+I'm interested in feedback, either via
+[twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
+GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
