@@ -156,7 +156,7 @@ infrastructure (CA cert, a server certificate for syslog-ng, and a client
 certificate for my MirageOS unikernel).
 
 I added the boilerplate code to [this blog
-software](https://github.com/hannesm/Canopy/commit/732f3245ebbcf5f79e3d47ae797ca778568f896b),
+software](https://github.com/hannesm/Canopy/commit/0dca7a83be6fe55b89f8f4daaf6aac69adf7fd0f),
 surely this should be massaged and moved up the stack, thus it is easily
 available for other MirageOS unikernels.  It is running since a week like a
 charm (already collected 700KB of HTTP access log), and feels much better than
