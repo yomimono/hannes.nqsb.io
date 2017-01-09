@@ -24,7 +24,7 @@ While lots of people seem to like KVM and Linux, I still prefer FreeBSD, their j
 
 ## How?
 
-These instructions are still slightly bumpy.  If you've a FreeBSD with bhyve (I use FreeBSD-CURRENT), and OCaml and opam (>=1.2.2) installed, it is pretty straightforward to get solo5 running.  First, I'd suggest to use a fresh opam switch in case you work on other OCaml projects: `opam switch -A 4.03.0 solo5` (followed by ``eval `opam config env` `` to setup some environment variables).
+These instructions are still slightly bumpy.  If you've a FreeBSD with bhyve (I use FreeBSD-CURRENT), and OCaml and opam (>=1.2.2) installed, it is pretty straightforward to get solo5 running.  First, I'd suggest to use a fresh opam switch in case you work on other OCaml projects: `opam switch -A 4.04.0 solo5` (followed by ``eval `opam config env` `` to setup some environment variables).
 
 You need some software from the ports: `devel/pkgconf`, `devel/gmake`, `devel/binutils`, and `sysutils/grub2-bhyve`.
 
