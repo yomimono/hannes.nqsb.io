@@ -41,11 +41,12 @@ can contain code into areas with less authority, we should do so.  Obviously,
 the mechanism to contain code needs to be carefully audited as well, since
 it will likely need to run in privileged mode.
 
-In a virtualised world, we have on top of the kernel a
-[hypervisor](https://en.wikipedia.org/wiki/Hypervisor), which runs in ring -1.
-The hypervisor gives access to memory and hardware to virtual machines,
-schedules those virtual machines on processors, and should isolate the virtual
-machines from each other.
+In a virtualised world, we run a
+[hypervisor](https://en.wikipedia.org/wiki/Hypervisor) in ring -1, on top of
+which we run an operating system kernel.  The hypervisor gives access to memory
+and hardware to virtual machines, schedules those virtual machines on
+processors, and should isolate the virtual machines from each other (by using
+the MMU).
 
 ![there's no cloud, just other people's computers](https://fsfe.org/contribute/promopics/thereisnocloud-v2-preview.png)
 
@@ -107,7 +108,7 @@ primitives](https://github.com/mirleft/ocaml-nocrypto/tree/f076d4e75c56054d79b87
 To further read up on the topic, there is a [nice article about the
 security](https://matildah.github.io/posts/2016-01-30-unikernel-security.html).
 
-This website is 16MB in size (and I didn't even bother to strip yet), which
+This website is 12MB in size (and I didn't even bother to strip yet), which
 includes the static CSS and JavaScript (bootstrap, jquery, fonts), [HTTP](https://github.com/mirage/ocaml-cohttp), [TLS](https://github.com/mirleft/ocaml-tls) (also [X.509](https://github.com/mirleft/ocaml-x509), [ASN.1](https://github.com/mirleft/ocaml-asn1-combinators), [crypto](https://github.com/mirleft/ocaml-nocrypto)), [git](https://github.com/mirage/ocaml-git/) (and [irmin](https://github.com/mirage/irmin)), [TCP/IP](https://github.com/mirage/mirage-tcpip) libraries.
 The memory management in MirageOS is
 straightforward: the hypervisor provides the OCaml runtime with a chunk of memory, which
