@@ -5,21 +5,7 @@ tags: overview, operating system, mirageos
 abstract: Operating systems and MirageOS
 ---
 
-## Updates
-
-Sorry to be late with this entry, but I had to fix some issues:
-
-- this website is based on [Canopy](https://github.com/Engil/Canopy), the content is stored as markdown in a [git repository](https://github.com/hannesm/hannes.nqsb.io)
-- it was running in a [FreeBSD](https://FreeBSD.org) jail, but when I compiled too much the underlying [zfs file system](https://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/zfs.html) wasn't happy (and is now hanging in kernel space in a read)
-- no remote power switch (borrowed to a friend 3 weeks ago), nobody was willing to go to the data centre and reboot
-- I wanted to move it anyways to a host where I can deploy [Xen](http://www.xenproject.org/) guest VMs
-- turns out the Xen compilation and deployment mode needed some love:
-   - I ported a newer [bin_prot](https://github.com/hannesm/bin_prot/tree/113.33.00+xen) to xen
-   - I wrote a clean patch to [serve via TLS](https://github.com/Engil/Canopy/pull/15) (including [HSTS header](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) and redirecting HTTP (moved permanently) to HTTPS)
-   - I found a memory leak in the [mirage-http](https://github.com/mirage/mirage-http/pull/23) library
-- I was travelling
-- good news: it now works on Xen, and there is [an atom feed](https://hannes.nqsb.io/atom)
-- life of an "eat your own dogfood" full stack engineer ;)
+Sorry to be late with this entry, but I had to fix some issues.
 
 ## What is an operating system?
 
@@ -178,3 +164,17 @@ I hope I gave some insight into what the purpose of an operating systems is, and
 how MirageOS fits into the picture. I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
+
+## Other updates in the MirageOS ecosystem
+
+- this website is based on [Canopy](https://github.com/Engil/Canopy), the content is stored as markdown in a [git repository](https://github.com/hannesm/hannes.nqsb.io)
+- it was running in a [FreeBSD](https://FreeBSD.org) jail, but when I compiled too much the underlying [zfs file system](https://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/zfs.html) wasn't happy (and is now hanging in kernel space in a read)
+- no remote power switch (borrowed to a friend 3 weeks ago), nobody was willing to go to the data centre and reboot
+- I wanted to move it anyways to a host where I can deploy [Xen](http://www.xenproject.org/) guest VMs
+- turns out the Xen compilation and deployment mode needed some love:
+   - I ported a newer [bin_prot](https://github.com/hannesm/bin_prot/tree/113.33.00+xen) to xen
+   - I wrote a clean patch to [serve via TLS](https://github.com/Engil/Canopy/pull/15) (including [HSTS header](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) and redirecting HTTP (moved permanently) to HTTPS)
+   - I found a memory leak in the [mirage-http](https://github.com/mirage/mirage-http/pull/23) library
+- I was travelling
+- good news: it now works on Xen, and there is [an atom feed](https://hannes.nqsb.io/atom)
+- life of an "eat your own dogfood" full stack engineer ;)

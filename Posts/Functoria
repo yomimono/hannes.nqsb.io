@@ -5,15 +5,6 @@ tags: mirageos, background
 abstract: how to actually configure the system
 ---
 
-## Updates
-
-- now using Html5.P.print instead of string concatenation, as suggested by Drup (both on [nqsb.io](https://github.com/mirleft/nqsb.io/commit/f16291b67d203bf6b2ebc0c5c8479b7cfd153683) and in [Canopy](https://github.com/Engil/Canopy/pull/46))
-- Canopy updated and created timestamps (for [irmin-0.10](https://github.com/Engil/Canopy/pull/48) and [irmin-0.11](https://github.com/Engil/Canopy/pull/43))
-- another [resource leak in mirage-http](https://github.com/mirage/mirage-http/pull/24)
-- [mirage-platform now has 4.03 support](https://github.com/mirage/mirage-platform/pull/165) and [strtod](https://github.com/mirage/mirage-platform/issues/118) (finally :)
-- [blog posts about retreat in marrakech](https://mirage.io/blog/2016-spring-hackathon)
-- [syndic 1.5.0 release](https://github.com/Cumulus/Syndic) now using ptime instead of calendar
-
 Sorry for being late again with this article, I had other ones planned, but am not yet satisfied with content and code, will have to wait another week.
 
 ## MirageOS configuration
@@ -160,3 +151,12 @@ We walked through the configuration magic of MirageOS, which is a domain-specifi
 I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
+
+## Other updates in the MirageOS ecosystem
+
+- now using Html5.P.print instead of string concatenation, as suggested by Drup (both on [nqsb.io](https://github.com/mirleft/nqsb.io/commit/f16291b67d203bf6b2ebc0c5c8479b7cfd153683) and in [Canopy](https://github.com/Engil/Canopy/pull/46))
+- Canopy updated and created timestamps (for [irmin-0.10](https://github.com/Engil/Canopy/pull/48) and [irmin-0.11](https://github.com/Engil/Canopy/pull/43))
+- another [resource leak in mirage-http](https://github.com/mirage/mirage-http/pull/24)
+- [mirage-platform now has 4.03 support](https://github.com/mirage/mirage-platform/pull/165) and [strtod](https://github.com/mirage/mirage-platform/issues/118) (finally :)
+- [blog posts about retreat in marrakech](https://mirage.io/blog/2016-spring-hackathon)
+- [syndic 1.5.0 release](https://github.com/Cumulus/Syndic) now using ptime instead of calendar

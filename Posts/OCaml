@@ -5,14 +5,6 @@ tags: overview, background
 abstract: a gentle introduction into OCaml
 ---
 
-## Updates
-
-- Canopy now sends out appropriate [content type](https://github.com/Engil/Canopy/pull/23) HTTP headers
-- [mirage-http 2.5.2](https://github.com/mirage/mirage-http/releases/tag/v2.5.2) was released to [opam](https://opam.ocaml.org/packages/mirage-http/mirage-http.2.5.2/) which fixes the resource leak
-- regression in [mirage-net-xen 1.6.0](https://github.com/mirage/mirage-net-xen/issues/39), I'm back on 1.4.1
-- I stumbled upon [too large crunch for MirageOS](https://github.com/mirage/mirage/issues/396), no solution apart from using a FAT image ([putting the data into an ELF section](https://github.com/mirage/mirage/issues/489) would solve the issue, if anyone is interested in MirageOS, that'd be a great project to start with)
-- unrelated, [X.509 0.5.2](https://opam.ocaml.org/packages/x509/x509.0.5.2/) fixes [this bug](https://github.com/mirleft/ocaml-x509/commit/1a1476308d24bdcc49d45c4cd9ef539ca57461d2) in certificate chain construction
-
 ## Programming
 
 For me, programming is fun.  I enjoy doing it, every single second.  All the way
@@ -141,3 +133,11 @@ specification and
 implementation](https://nqsb.io/nqsbtls-usenix-security15.pdf).  I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
+
+## Other updates in the MirageOS ecosystem
+
+- Canopy now sends out appropriate [content type](https://github.com/Engil/Canopy/pull/23) HTTP headers
+- [mirage-http 2.5.2](https://github.com/mirage/mirage-http/releases/tag/v2.5.2) was released to [opam](https://opam.ocaml.org/packages/mirage-http/mirage-http.2.5.2/) which fixes the resource leak
+- regression in [mirage-net-xen 1.6.0](https://github.com/mirage/mirage-net-xen/issues/39), I'm back on 1.4.1
+- I stumbled upon [too large crunch for MirageOS](https://github.com/mirage/mirage/issues/396), no solution apart from using a FAT image ([putting the data into an ELF section](https://github.com/mirage/mirage/issues/489) would solve the issue, if anyone is interested in MirageOS, that'd be a great project to start with)
+- unrelated, [X.509 0.5.2](https://opam.ocaml.org/packages/x509/x509.0.5.2/) fixes [this bug](https://github.com/mirleft/ocaml-x509/commit/1a1476308d24bdcc49d45c4cd9ef539ca57461d2) in certificate chain construction

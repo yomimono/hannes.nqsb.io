@@ -5,13 +5,6 @@ tags: mirageos, http, tls, protocol
 abstract: building a simple website
 ---
 
-## Updates
-
-- [Canopy](https://github.com/Engil/Canopy) improvements: [no bower anymore](https://github.com/Engil/Canopy/pull/26),  [HTTP caching support (via etags)](https://github.com/Engil/Canopy/pull/27), [listings now include dates](https://github.com/Engil/Canopy/pull/31), [dates are now in big-endian (y-m-d)](https://github.com/Engil/Canopy/pull/32)
-- [MirageOS call irclog from 2014-04-20](http://canopy.mirage.io/irclogs/20-04-2016)
-- blog article about [naive authentication service using MirageOS](https://abailly.github.io/posts/mirage-os-newbie.html)
-- [OCaml 4.03 post](https://lwn.net/SubscriberLink/684128/1436601f401c1f09/)
-
 ## Task
 
 Our task is to build a small unikernel which provides a project website.  On our way we will wade through various layers using code examples.  The website itself contains a few paragraphs of text, some link lists, and our published papers in pdf form.
@@ -270,3 +263,10 @@ For a start in MirageOS unikernels, look into our [mirage-skeleton](https://gith
 I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
+
+## Other updates in the MirageOS ecosystem
+
+- [Canopy](https://github.com/Engil/Canopy) improvements: [no bower anymore](https://github.com/Engil/Canopy/pull/26),  [HTTP caching support (via etags)](https://github.com/Engil/Canopy/pull/27), [listings now include dates](https://github.com/Engil/Canopy/pull/31), [dates are now in big-endian (y-m-d)](https://github.com/Engil/Canopy/pull/32)
+- [MirageOS call irclog from 2014-04-20](http://canopy.mirage.io/irclogs/20-04-2016)
+- blog article about [naive authentication service using MirageOS](https://abailly.github.io/posts/mirage-os-newbie.html)
+- [OCaml 4.03 post](https://lwn.net/SubscriberLink/684128/1436601f401c1f09/)

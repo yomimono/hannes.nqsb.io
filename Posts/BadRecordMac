@@ -5,14 +5,6 @@ tags: mirageos, security
 abstract: 10BTC could've been yours
 ---
 
-## Updates
-
-- Canopy uses a [map instead of a hashtable](https://github.com/Engil/Canopy/issues/30#issuecomment-215010365), [tags](https://hannes.nqsb.io/tags) now contains a list of tags ([PR here](https://github.com/Engil/Canopy/pull/39)), both thanks to voila!  I also use the [new CSS](https://github.com/Engil/Canopy/pull/38) from Engil
-- There is a [CVE for OCaml <=4.03](http://www.openwall.com/lists/oss-security/2016/04/29/1)
-- [Mirage 2.9.0](https://github.com/mirage/mirage/pull/534) was released, which integrates support of the logs library (now already used in [mirage-net-xen](https://github.com/mirage/mirage-net-xen/pull/43) and [mirage-tcpip](https://github.com/mirage/mirage-tcpip/pull/199))
-- This blog post has an accompanied [MirageOS security advisory](https://mirage.io/blog/MSA00)
-- cfcs documented some [basic unikernels](https://github.com/cfcs/mirage-examples)
-
 ## BAD RECORD MAC
 
 Roughly 2 weeks ago, [Engil](https://github.com/Engil) informed me that a TLS alert pops up in his browser sometimes when he reads this website.  His browser reported that the [message authentication code](https://en.wikipedia.org/wiki/Message_authentication_code) was wrong.  From [RFC 5246](https://tools.ietf.org/html/rfc5246): This message is always fatal and should never be observed in communication between proper implementations (except when messages were corrupted in the network).
@@ -78,3 +70,11 @@ Certainly, interfacing the outside world is complex.  The [mirage-block-xen](htt
 I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
 GitHub](https://github.com/hannesm/hannes.nqsb.io/issues).
+
+## Other updates in the MirageOS ecosystem
+
+- Canopy uses a [map instead of a hashtable](https://github.com/Engil/Canopy/issues/30#issuecomment-215010365), [tags](https://hannes.nqsb.io/tags) now contains a list of tags ([PR here](https://github.com/Engil/Canopy/pull/39)), both thanks to voila!  I also use the [new CSS](https://github.com/Engil/Canopy/pull/38) from Engil
+- There is a [CVE for OCaml <=4.03](http://www.openwall.com/lists/oss-security/2016/04/29/1)
+- [Mirage 2.9.0](https://github.com/mirage/mirage/pull/534) was released, which integrates support of the logs library (now already used in [mirage-net-xen](https://github.com/mirage/mirage-net-xen/pull/43) and [mirage-tcpip](https://github.com/mirage/mirage-tcpip/pull/199))
+- This blog post has an accompanied [MirageOS security advisory](https://mirage.io/blog/MSA00)
+- cfcs documented some [basic unikernels](https://github.com/cfcs/mirage-examples)
