@@ -167,9 +167,7 @@ thus it does not work while booting, or when a persistent network failure
 occured.
 
 [Code is on GitHub](https://github.com/hannesm/logs-syslog), [documentation is
-online](https://hannesm.github.io/logs-syslog/doc), released in opam.  A version
-of logs-syslog supporting the current development version of MirageOS is
-available in the [dev branch](https://github.com/hannesm/logs-syslog/tree/dev).
+online](https://hannesm.github.io/logs-syslog/doc), released in opam.
 
 I'm interested in feedback, either via
 [twitter](https://twitter.com/h4nnes) or as an issue on the [data repository on
