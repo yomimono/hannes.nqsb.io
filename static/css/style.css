@@ -6,11 +6,11 @@ html {
 
 html a {
     text-decoration: none;
-    color: black
+    color: #777777;
 }
 
 html a:visited {
-    color: black
+    color: #222222;
 }
 
 .navbar {

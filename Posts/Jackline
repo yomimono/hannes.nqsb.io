@@ -1,0 +1,402 @@
+---
+title: Jackline, a secure terminal-based XMPP client
+author: hannes
+tags: UI, security
+abstract: implement it once to know you can do it.  implement it a second time and you get readable code.  implementing it a third time from scratch may lead to useful libraries.
+---
+
+![screenshot](https://berlin.ccc.de/~hannes/jackline2.png)
+
+Back in 2014, when we implemented [TLS](https://nqsb.io) in OCaml, at some point
+I was bored with TLS.  I usually need at least two projects at the same time to
+procrastinate the one I should do with the other one - it is always more fun to
+do what you're not supposed to do.  I started to implement another security
+protocol ([Off-the-record](https://otr.cypherpunks.ca/), resulted in
+[ocaml-otr](http://hannesm.github.io/ocaml-otr/doc/Otr.html)) on my own,
+applying what I learned while co-developing TLS with David.  I was eager to
+actually deploy our TLS stack: using it with a web server (see [this
+post](https://hannes.nqsb.io/Posts/nqsbWebsite)) is fun, but only using one half
+of the state machine (server side) and usually short-lived connections
+(discovers lots of issues with connection establishment) - not the client side
+and no long living connection (which may discover other kinds of issues, such as
+leaking memory).
+
+To use the stack, I needed to find an application I use on a daily basis (thus
+I'm eager to get it up and running if it fails to work).  Mail client or web
+client are just a bit too big for a spare time project (maybe not ;).  Another
+communication protocol I use daily is jabber, or
+[XMPP](https://en.wikipedia.org/wiki/Xmpp).  Back then I used
+[mcabber](https://mcabber.com) inside a terminal, which is a curses based client
+written in C.
+
+I started to develop [jackline](https://github.com/hannesm/jackline) (first
+commit is 13th November 2014), a terminal based XMPP client in
+[OCaml](https://hannes.nqsb.io/Posts/OCaml).  This is a report of a
+work-in-progress (unreleased, but publicly available!) software project.  I'm
+not happy with the code base, but neverthelss consider it to be a successful
+project: dozens of friends are using it (no exact numbers), I got [contributions
+from other people](https://github.com/hannesm/jackline/graphs/contributors)
+(more than 25 commits from more than 8 individuals), I use it on a daily basis
+for lots of personal communication.
+
+## What is XMPP?
+
+The eXtensible Messaging and Presence Protocol (previously known as Jabber)
+describes (these days as [RFC 6120](https://tools.ietf.org/html/rfc6120)) a
+communication protocol based on XML fragments, which enables near real-time
+exchange of structured (and extensible) data between two network entities.
+
+The landscape of instant messaging used to contain ICQ, AOL instant messenger,
+and MSN messenger.  In 1999, people defined a completely open protocol standard,
+then named Jabber, since 2011 official RFCs.  It is a federated (similar to
+eMail) near-real time extensible messaging system (including presence
+information) used for instant messaging.  Extensions include end-to-end
+encryption, multi-user chat, audio transport, ...  Unicode support is builtin,
+everything is UTF8 encoded.
+
+There are various open jabber servers where people can register accounts, as
+well as closed ones.  Google Talk used to federate (until 2014) into XMPP,
+Facebook chat used to be based on XMPP.  Those big companies wanted something
+"more usable" (where they're more in control, reliable message delivery via
+caching in the server and mandatory delivery receipts, multiple devices all
+getting the same messages), and thus moved away from the open standard.
+
+### XMPP Security
+
+Authentication is done via a TLS channel (where your client should authenticate
+the server), and SASL that the server authenticates your client.  I
+[investigated in
+2008](https://berlin.ccc.de/~hannes/secure-instant-messaging.pdf) (in German)
+which clients and servers use which authentication methods (I hope the state of
+certificate verification improved in the last decade).
+
+End-to-end encryption is achievable using OpenPGP (rarely used in my group of
+friends) via XMPP, or [Off-the-record](https://otr.cypherpunks.ca/), which was
+pioneered over XMPP, and is still in wide use - it gave rise to forward secrecy:
+if your long-term (stored on disk) asymmetric keys get seized or stolen, they
+are not sufficient to decrypt recorded sessions (you can't derive the session
+key from the asymmetric keys) -- but the encrypted channel is still
+authenticated (once you verified the public key via a different channel or a
+shared secret (using the [Socialist millionairs
+problem](https://en.wikipedia.org/wiki/Socialist_millionaire))).
+
+OTR does not support offline messages (the session keys may already be destroyed
+by the time the communication partner reconnects and receives the stored
+messages), and thus recently [omemo](https://conversations.im/omemo/) was
+developed.  Other messaging protocols (Signal, Threema) are not really open,
+support no federation, but have good support for group encryption and offline
+messaging.  (There is a [nice overview over secure messaging and
+threats.](http://www.cypherpunks.ca/~iang/pubs/secmessaging-oakland15.pdf))
+
+There is (AFAIK) no encrypted group messaging via XMPP; also the XMPP server
+contains lots of sensible data: your address book (buddy list), together with
+offline messages, nicknames you gave to your buddies, subscription information,
+and information every time you connect (research of privacy preserving presence
+protocols has been done, but is not widely used AFAIK,
+e.g. [DP5](http://cacr.uwaterloo.ca/techreports/2014/cacr2014-10.pdf)).
+
+### XMPP client landscape
+
+See [wikipedia](https://en.wikipedia.org/wiki/Comparison_of_XMPP_clients) for an
+extensive comparison (which does not mention jackline :P).
+
+A more opinionated analysis is that you were free to choose between C - where
+all code has to do manual memory management and bounds checking - with ncurses
+(or GTK) and OpenSSL (or GnuTLS) using libpurple (or some other barely
+maintained library which tries to unify all instant messaging protocols), or
+Python - where you barely know upfront what it will do at runtime - with GTK and
+some OpenSSL, or even JavaScript - where external scripts can dynamically modify
+the prototype of everything at runtime (and thus modify code arbitrarily,
+violating invariants) - calling out to C libraries (NSS, maybe libpurple, who
+knows?).
+
+Due to complex APIs of transport layer security, certificate verification is
+[still not always done correctly](https://pidgin.im/news/security/?id=91) (that's just
+one example, you'll find more) - even if, it may not allow custom trust anchors
+or certificate fingerprint based verification - which are crucial for a
+federated operations without a centralised trust authority.
+
+Large old code basis usually gather dust and getting bitrot - and if you add
+patch by patch from random people on the Internet, you've to deal with the most
+common bug: insufficient checking of input (or output data, [if you encrypt only
+the plain body, but not the marked up
+one](https://dev.gajim.org/gajim/gajim-plugins/issues/145)).  In some
+programming languages this easily [leads to execution of remote code](
+https://pidgin.im/news/security/?id=64), other programming languages steal the
+work from programmers by deploying automated memory management (finally machines
+take our work away! :)) - also named garbage collection, often used together
+with automated bounds checking -- this doesn't mean that you're safe - there are
+still logical flaws, and integer overflows (and funny things which happen at
+resource starvation), etc.
+
+### Goals and non-goals
+
+My upfront motivation was to write and use an XMPP client tailored to my needs.
+I personally don't use many graphical applications (coding in emacs, mail via
+thunderbird, firefox, mplayer, mupdf), but stick mostly to terminal
+applications.  I additionally don't use any terminal multiplexer (saw too many
+active `screen` sessions on remote servers where people left root shells open).
+
+The [goal was from the
+beginning](https://github.com/hannesm/jackline/commit/9322ceefa9a331fa92a6bf253e8d8f010da2229c)
+to write a "minimalistic graphical user interface for a secure (fail hard)
+and trustworthy XMPP client".  By *fail hard* I mean exactly that: if it can't
+authenticate the server, don't send the password.  If there is no
+end-to-end encrypted session, don't send the message.
+
+As a user of (unreleased) software, there is a single property which I like to
+preserve: continue to support all data written to persistent storage.  Even
+during large refactorings, ensure that data on the user's disk will also be
+correctly parsed.  There is nothing worse than having to manually configure an
+application after update.  The solution is straightforward: put a version in
+every file you write, and keep readers for all versions ever written around.
+My favourite marshalling format (human readable, structured) are still
+S-expressions - luckily there is a
+[sexplib](https://github.com/janestreet/sexplib) in OCaml for handling these.
+
+I also appreciate another property of software: don't ever transmit any data or
+open a network connection unless initiated by the user.  Don't be obviously
+fingerprintable.  A more mainstream demand is surely that software should not
+phone home - that's why I don't know how many people are using jackline, reports
+based on friends opinions are hundreds of users, I personally know at least
+several dozens.
+
+As written [earlier](https://hannes.nqsb.io/Posts/OperatingSystem), I often take
+a look at the trusted computing base of a computer system.  Jackline's trusted
+computing base consists of the client software itself, its OCaml dependencies
+(including OTR, TLS, tty library, ...), then the OCaml runtime system, which
+uses some parts of libc, and a whole UNIX kernel underneath -- one goal is to
+have jackline running as a unikernel (then you connect via SSH or telnet and
+TLS).
+
+There are only a few features I need in an XMPP client: single account, strict
+validation, delivery receipts, notification callback, being able to deal with
+friends logged in multiple times with wrongly set priorities - and end-to-end
+encryption.  I don't need inline HTML, avatar images, my currently running
+music, leaking timezone information, etc.  I explicitly don't want to import any
+private key material from other clients and libraries, because I want to ensure
+that the key was generated by a good random number generator (read [David's blog
+article](https://mirage.io/blog/mirage-entropy) on randomness and entropy).
+
+The security story is crucial: always do strict certificate validation, fail
+hard, make it noticable by the user if they're doing insecure communication.
+Only few people are into reading out loud their OTR public key fingerprint, and
+SMP is not trivial -- thus jackline records the known public keys together with
+a set of resources used, a session count, and blurred timestamps (accuracy: day)
+when the publickey was initially used and when it was used the last time.
+
+I'm pragmatic - if there is some server (or client) deployed out there which
+violates (my interpretation of) the specification, I'm happy to [implement
+workarounds](https://github.com/hannesm/ocaml-otr/issues/10).  Initially I
+worked roughly one day a week on jackline.
+
+To not release the software for some years was something I learned from the
+[slime](https://common-lisp.net/project/slime/) project ([watch Luke's
+presentation from 2013](https://www.youtube.com/watch?v=eZDWJfB9XY4)) - if
+there's someone complaining about an issue, fix it within 10 minutes and ask
+them to update.  This only works if each user compiles the git version anyways.
+
+## User interface
+
+![other screenshot](http://berlin.ccc.de/~hannes/jackline.png)
+
+Stated goal is *minimalistic*.  No heavy use of colours.  Visibility on
+both black and white background (btw, as a Unix process there is no way to find
+out your background colour (or is there?)).  The focus is also *security* - and
+that's where I used colours from the beginning: red is unencrypted (non
+end-to-end, there's always the transport layer encryption) communication, green
+is encrypted communication.  Verification status of the public key uses the same
+colours: red for not verified, green for verified.  Instead of colouring each
+message individually, I use the encryption status of the active contact
+(highlighted in the contact list, where messages you type now will be sent to)
+to colour the entire frame.  This results in a remarkable visual indication and
+(at least I) think twice before presssing `return` in a red terminal.  Messages
+were initially white/black, but got a bit fancier over time: incoming messages
+are bold, multi user messages mentioning your nick are underlined.
+
+The graphical design is mainly inspired by mcabber, as mentioned earlier.  There
+are four components: the contact list in the upper left, chat window upper
+right, log window on the bottom (surrounded by two status bars), and a readline
+input.  The sizes are configurable (via commands and key shortcuts).  A
+different view is having the chat window fullscreen (or only the received
+messages) - useful for copy and pasting fragments.  Navigation is done in the
+contact list.  There is a single active contact (colours are inverted in the
+contact list, and the contact is mentioned in the status bar), whose chat
+messages are displayed.
+
+There is not much support for customisation - some people demanded to have a
+7bit ASCII version (I output some unicode characters for layout).  Recently I
+added support to customise the colours.  I tried to ensure it looks fine on both
+black and white background.
+
+## Code
+
+Initially I targeted GTK with OCaml, but that excursion only lasted [two
+weeks](https://github.com/hannesm/jackline/commit/17b674130f7b1fcf2542eb5e0911a40b81fc724e),
+when I switched to a [lambda-term](https://github.com/diml/lambda-term) terminal
+interface.
+
+### UI
+
+The lambda-term interface survived for a good year (until [26th Jan
+2016](https://github.com/hannesm/jackline/commit/47ae690eb720cbb89323d98b0f7af17bfaea26e7)),
+when I started to use [notty](https://github.com/pqwy/notty) - developed by
+David - using a decent [unicode library](http://erratique.ch/software/uutf).
+
+Notty back then was under heavy development, I spend several hours rebasing
+jackline to updates in notty.  What I got out of it is proper unicode support:
+the symbol 茶 gets two characters width (and the layouting needs to keep track
+of how many characters are already written on the terminal).
+
+I recommend to look into [notty](https://github.com/pqwy/notty) if you want to
+do terminal graphics in OCaml!
+
+### Application logic
+
+Stepping back, an XMPP client reacts to two input sources: the user input
+(including terminal resize), and network input (or failure).  The output is a
+screen (80x25 characters) image.  Each input event can trigger output events on
+the display and the network.
+
+I used to use multiple threads and locking between shared data for these kinds
+of applications: there can go something wrong when network and user input
+happens at the same time, or what if the output is interrupted by more input
+(which happens e.g. during copy and paste).
+
+Initially I used lots of shared data and had hope, but this was clearly not a
+good solution.  Nowadays I use mailboxes, and separate tasks which wait for
+receiving a message: one task which writes persistent data (session counts,
+verified fingerprints) periodically to ask, another which writes on change to
+disk, an error handler
+([`init_system`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/bin/jackline.ml#L3-L25))
+which resets the state upon a connection failure, another task which waits for
+user input
+([`read_terminal`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/cli/cli_input.ml#L169)),
+one waiting for network input ([`Connect`, including reconnecting
+timers](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/cli/cli_state.ml#L202)),
+one to call out the notification hooks
+([`Notify`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/cli/cli_state.ml#L100)),
+etc.  The main task is simple: wait for input, process input (producing a new
+state), render the state, and recursively call itself
+([`loop`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/cli/cli_client.ml#L371)).
+
+Only recently I solved the copy and paste issue by [delaying all redraws by
+40ms](https://github.com/hannesm/jackline/commit/cab34acab004023911997ec9aee8b00a976af7e4),
+and canceling if another redraw is scheduled.
+
+The whole
+[`state`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/cli/cli_state.ml#L29-L58)
+contains some user interface parameters (`/buddywith`, `/logheight`, ..), as
+well as the contact map, which contain users, which have sessions, each
+containing chat messages.
+
+The code base is just below 6000 lines of code (way too big ;), and nowadays
+supports multi-user chat, sane multi-resource interaction (press `enter` to show
+all available resources of a contact and message each individually in case you
+need to), configurable colours, tab completions for nicknames and commands,
+per-user input history, emacs keybindings.  It even works with the XMPP gateway
+provided by slack (some startup doing a centralised groupchat with picture embedding and
+animated cats).
+
+### Road ahead
+
+Common feature requests are: [omemo
+support](https://github.com/hannesm/jackline/issues/153), [IRC
+support](https://github.com/hannesm/jackline/issues/104), [support for multiple
+accounts](https://github.com/hannesm/jackline/issues/115) (TBH, these are all
+things I'd like to have as well).
+
+But there's some mess to clean up:
+
+1. The [XMPP library](https://github.com/ermine/xmpp) makes heavy use of
+functors (to abstract over the concrete IO, etc.), and embeds IO deep inside it.
+I do prefer (see e.g. [our TLS paper](https://usenix15.nqsb.io), or [my ARP
+post](https://hannes.nqsb.io/Posts/ARP)) these days to have a pure interface for
+the protocol implementation, providing explicit input (state, event, data), and
+output (state, action, potentially data to send on network, potentially data to
+process by the application).  The [sasl
+implementation](https://github.com/hannesm/xmpp/blob/eee18bd3dd343550169969c0b45548eafd51cfe1/src/sasl.ml)
+is partial and deeply embedded.  The XML parser is as well deeply embedded (and [has
+some
+issues](https://github.com/hannesm/jackline/issues/8#issuecomment-67773044)).
+The library needs to be teared apart (something I procrastinate since more than
+a year).  Once it is pure, the application can have full control over when to
+call IO (and esp use the same protocol implementation as well for registering a
+new account - [currently not
+supported](https://github.com/hannesm/jackline/issues/12)).
+
+2. On the frontend side (the `cli` subfolder), there is too much knowledge of
+XMPP.  It should be more general, and be reusable (some bits and pieces are
+notty utilities, such as wrapping a string to fit into a text box of specific
+width (see
+[`split_unicode`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/cli/cli_support.ml#L22)).
+
+3. The command processing engine itself is 1300 lines (including ad-hoc string
+parsing)
+([`Cli_commands`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/cli/cli_commands.ml)),
+best to replaced by a more decent command abstraction.
+
+4. A big record of functions
+([`user_data`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/src/xmpp_callbacks.ml#L46))
+is passed (during `/connect` in
+[`handle_connect`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/cli/cli_commands.ml#L221-L582))
+from the UI to the XMPP task to inject messages and errors.
+
+5. The global variable
+[`xmpp_session`](https://github.com/hannesm/jackline/blob/ec8f8c01d6503bf52be263cd319ef21f2b62ff2e/cli/cli_state.ml#L200)
+should be part of the earlier mentioned `cli_state`.
+
+6. Having jackline self-hosted as a MirageOS unikernel.  I've implemented a a
+[telnet](https://github.com/hannesm/telnet) server, there is a [notty
+branch](https://github.com/pqwy/notty/tree/mirage) be used with the telnet
+server.  But there is (right now) no good story for persistent mutable storage.
+
+7. Jackline predates some very elegant libraries, such as
+[logs](http://erratique.ch/software/logs) and
+[astring](http://erratique.ch/software/astring), even
+[result](http://caml.inria.fr/pub/docs/manual-ocaml/libref/Pervasives.html#TYPEresult) - since 4.03 part of Pervasives - is not used.
+Clearly, other libraries (such as TLS) do not yet use result.
+
+8. After looking in more depths at the logs library, and at user interfaces - I
+envision the graphical parts to be (mostly!?) a viewer of logs, and a command
+shell (using a control interface, maybe
+[9p](https://github.com/mirage/ocaml-9p/)): Multiple layers (of a protocol),
+slightly related (by [tags](http://erratique.ch/software/logs/doc/Logs.Tag.html) - such as the OTR session), and have the layers be visible to users (see also
+[tlstools](https://github.com/mirleft/tlstools)), a slightly different interface
+of similarly structured data.  In jackline I'd like to e.g. see all messages of
+a single OTR session (see [issue](https://github.com/hannesm/jackline/issues/111)), or hide the presence messages in a multi-user chat,
+investigate the high-level message, its XML encoded stanza, TLS encrypted
+frames, the TCP flow, all down to the ethernet frames send over the wire - also
+viewable as sequence diagram and other suitable (terminal) presentations (TCP
+window size maybe in a size over time diagram).
+
+9. Once the API between the sources (contacts, hosts) and the UI (what to
+display, where and how to trigger notifications, where and how to handle global
+changes (such as reconnect)) is clear and implemented, commands need to be
+reinvented (some, such as navigation commands and emacs keybindings, are generic
+to the user interface, others are specific to XMPP and/or OTR): a new transport
+(IRC) or end-to-end crypto protocol (omemo) - should be easy to integrate (with
+similar minimal UI features and colours).
+
+### Conclusion
+
+Jackline started as a procrastination project, and still is one.  I only develop
+on jackline if I enjoy it.  I'm not scared to try new approaches in jackline,
+and either reverting them or rewriting some chunks of code again.  It is a
+project where I publish early and push often.  I've met several people (whom I
+don't think I know personally) in the multi-user chatroom
+`jackline@conference.jabber.ccc.de`, and fixed bugs, discussed features.
+
+When introducing [customisable
+colours](https://github.com/hannesm/jackline/commit/40bec5efba81061cc41df891cadd282120e16816),
+the proximity to a log viewer became again clear to me - configurable colours
+are for severities such as `Success`, `Warning`, `Info`, `Error`, `Presence` -
+maybe I really should get started on implementing a log viewer.
+
+I would like to have more community contributions to jackline, but the lack of
+documentation (there aren't even a lot of interface files), mixed with a
+non-mainstream programming language, and a convoluted code base, makes me want
+some some code cleanups first, or maybe starting from scratch.
+
+I'm interested in feedback, either via [twitter](https://twitter.com/h4nnes) or
+on the [jackline repository on GitHub](https://github.com/hannesm/jackline).
