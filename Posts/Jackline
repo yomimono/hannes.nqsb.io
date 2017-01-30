@@ -245,8 +245,8 @@ David - using a decent [unicode library](http://erratique.ch/software/uutf).
 
 Notty back then was under heavy development, I spend several hours rebasing
 jackline to updates in notty.  What I got out of it is proper unicode support:
-the symbol 茶 gets two characters width (and the layouting needs to keep track
-of how many characters are already written on the terminal).
+the symbol 茶 gets two characters width (see screenshot at top of page), and the layouting keeps track
+how many characters are already written on the terminal.
 
 I recommend to look into [notty](https://github.com/pqwy/notty) if you want to
 do terminal graphics in OCaml!
