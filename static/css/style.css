@@ -5,12 +5,17 @@ html {
 }
 
 html a {
-    text-decoration: none;
-    color: #777777;
+    text-decoration-line: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: #1a1a1a;
+    color: black;
 }
 
 html a:visited {
-    color: #222222;
+    text-decoration-line: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: #1a1a1a;
+    color: black;
 }
 
 .navbar {
