@@ -12,7 +12,7 @@ I was bored with TLS.  I usually need at least two projects at the same time to
 procrastinate the one I should do with the other one - it is always more fun to
 do what you're not supposed to do.  I started to implement another security
 protocol ([Off-the-record](https://otr.cypherpunks.ca/), resulted in
-[ocaml-otr](http://hannesm.github.io/ocaml-otr/doc/Otr.html)) on my own,
+[ocaml-otr](https://hannesm.github.io/ocaml-otr/doc/Otr.html)) on my own,
 applying what I learned while co-developing TLS with David.  I was eager to
 actually deploy our TLS stack: using it with a web server (see [this
 post](https://hannes.nqsb.io/Posts/nqsbWebsite)) is fun, but only using one half
@@ -86,7 +86,7 @@ messages), and thus recently [omemo](https://conversations.im/omemo/) was
 developed.  Other messaging protocols (Signal, Threema) are not really open,
 support no federation, but have good support for group encryption and offline
 messaging.  (There is a [nice overview over secure messaging and
-threats.](http://www.cypherpunks.ca/~iang/pubs/secmessaging-oakland15.pdf))
+threats.](https://www.cypherpunks.ca/~iang/pubs/secmessaging-oakland15.pdf))
 
 There is (AFAIK) no encrypted group messaging via XMPP; also the XMPP server
 contains lots of sensible data: your address book (buddy list), together with
@@ -198,7 +198,7 @@ them to update.  This only works if each user compiles the git version anyways.
 
 ## User interface
 
-![other screenshot](http://berlin.ccc.de/~hannes/jackline.png)
+![other screenshot](https://berlin.ccc.de/~hannes/jackline.png)
 
 Stated goal is *minimalistic*.  No heavy use of colours.  Visibility on
 both black and white background (btw, as a Unix process there is no way to find
